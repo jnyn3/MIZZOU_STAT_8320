@@ -1,0 +1,352 @@
+---
+author: "JAYADITYA NATH"
+date: "2024-03-01"
+geometry: "margin=1.5cm"
+output: pdf_document
+---
+
+
+
+**PROBLEM 1.** 
+
+
+The problem deals with a chemical process whose yield(Y) can be determined on the basis of two factors : temperature($X_{1}$) and pressure($X_{2}$) through the following non-linear regression model : 
+
+$Y_{i}=\theta_{0}.X_{i1}^{\theta_{1}}.X_{i2}^{\theta_{2}}+\epsilon_{i}$, where $\epsilon_{i}$'s are the independent additive Gaussian error term assumed to have homogeneous error variance and mean equal to 0.
+
+```{r,echo=FALSE}
+#Given model
+model = function(theta_vec,x_1,x_2)
+{
+  theta_0 = theta_vec[1]
+  theta_1 = theta_vec[2]
+  theta_2 = theta_vec[3]
+  y = theta_0*((x_1)^theta_1)*((x_2)^theta_2)
+  return(y)
+}
+```
+
+To get an essence of the data relating to the already in use old machine, I plot out the data : 
+
+```{r,echo=FALSE,fig.height=3,fig.cap="Pairs Plot"}
+load("C:/Users/Jayaditya Nath/Documents/old.machine.rda")
+data_old = data.frame(old.machine)
+
+#Plotting the entire data
+pairs(data_old)
+```
+
+It seems from Figure 1 that there is no multicollinearity present among temperature and pressure.
+
+  The main goal of the problem is to find estimates of the parameters $\theta_{0},\theta_{1}$ and $\theta_{2}$ on the basis of some initial starting values, which I have determined by assuming a linear model. The data is obtained from an old machine already in use. 
+
+
+```{r,echo=FALSE}
+#Using OLS to approximate the starting values, 
+
+mod_ols = lm(log(Y) ~ log(X1) + log(X2), data = data_old)
+coef_ols = coef(mod_ols)
+
+
+#Initial theta values
+initial_theta_curl = c(exp(coef_ols[1]),coef_ols[2],coef_ols[3])
+```
+
+Here, I obtain the starting values for $\theta_{0},\theta_{1}$ and $\theta_{2}$ respectively as `r initial_theta_curl`.
+
+```{r,echo=FALSE,results=FALSE}
+#Gauss_Newton Algorithm to find the final parameter estimates
+
+library(pracma)
+Y = as.matrix(data_old$Y,nrow=18)
+theta_curl = initial_theta_curl
+
+for(iter in 1:20)
+{
+  f_theta = as.matrix(model(theta_curl,data_old$X1,data_old$X2),nrow=18)
+  col_1 = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_0'),list(theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],x_1=data_old$X1,x_2=data_old$X2))
+  col_2 = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_1'),list(theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],x_1=data_old$X1,x_2=data_old$X2))
+  col_3 = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_2'),list(theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],x_1=data_old$X1,x_2=data_old$X2))
+  F_theta = cbind(col_1,col_2,col_3)
+  
+  delta = pinv(t(F_theta) %*% F_theta) %*% t(F_theta) %*% (Y - f_theta)
+  theta_curl = as.matrix(theta_curl) + delta
+  
+  if(max(abs(delta))<0.0001)
+  {
+    break
+  }
+}
+
+print(paste0("The final estimates of theta are : ",theta_curl[1],",",theta_curl[2]," and ",theta_curl[3]," respectively."))
+print(paste0("The algorithm converges at the ",iter," th iteration."))
+
+```
+
+To get hold of the final converged estimates of the parameters, I have used the Gauss-Newton optimization algorithm and they read as follows : `r theta_curl`. Also, my algorithm converged at the `r iter`rd iteration. I have also used the \verb+nls()+ to check the results of my optimization algorithm and they seem to be sharing similar results.
+
+```{r,echo=FALSE,results=FALSE}
+#Using nls() to check the final estimates found after using the Gauss_Newton Algorithm
+mod_nls = nls(Y ~ theta0 * X1^theta1 * X2^theta2, data = data_old, start = list(theta0 = initial_theta_curl[1], theta1 = initial_theta_curl[2], theta2 = initial_theta_curl[3]))
+summary(mod_nls)
+```
+
+Also, it seems from the performed testing of hypothesis where $H_{0}:X1/X2=1$ vs $H_{a}:$not $H_{0}$ that there is strong evidence against the two predictors affecting the response similarly.
+
+```{r,echo=FALSE,results=FALSE}
+library(marginaleffects)
+hypotheses(mod_nls,"theta0/theta1=1")
+```
+
+
+Again, the parameters of the model seem to be quite significant as the confidence intervals for each of the parameters seem to contain each of them respectively.
+
+```{r,echo=FALSE,results=FALSE}
+sigma = sqrt((t(Y - f_theta) %*% (Y - f_theta))/(nrow(data_old)-length(theta_curl)))
+print(paste0("95% confidence interval for theta_0 is (",theta_curl[1]-(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),",",theta_curl[1]+(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),")"))
+print(paste0("95% confidence interval for theta_0 is (",theta_curl[2]-(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),",",theta_curl[2]+(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),")"))
+print(paste0("95% confidence interval for theta_0 is (",theta_curl[3]-(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),",",theta_curl[3]+(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta) %*% F_theta)[2,2])),")"))
+```
+
+Due to increasing demand, the factory buys another similar machine and now, the problem of interest lies in whether the data obtained from this machine is similar in nature to the data of the old machine which was a result of the fit of the previous model. So, I repeat the same procedure as for the old machine and obtain the final parameter estimates. 
+
+```{r,echo=FALSE,results=FALSE}
+load("C:/Users/Jayaditya Nath/Documents/new.machine.rda")
+data_new = data.frame(new.machine)
+
+#Using OLS to approximate the starting values, 
+
+mod_ols_new = lm(log(Y) ~ log(X1) + log(X2), data = data_new)
+coef_ols_new = coef(mod_ols_new)
+
+
+#Initial theta values
+initial_theta_curl_new = c(exp(coef_ols_new[1]),coef_ols_new[2],coef_ols_new[3])
+initial_theta_curl_new
+
+
+#Gauss_Newton Algorithm to find the final parameter estimates
+
+library(pracma)
+Y_new = as.matrix(data_new$Y,nrow=18)
+theta_curl_new = initial_theta_curl_new
+
+for(iter in 1:10)
+{
+  f_theta_new = as.matrix(model(theta_curl_new,data_new$X1,data_new$X2),nrow=18)
+  col_1_new = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_0'),list(theta_0=theta_curl_new[1],theta_1=theta_curl_new[2],theta_2=theta_curl_new[3],x_1=data_new$X1,x_2=data_new$X2))
+  col_2_new = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_1'),list(theta_0=theta_curl_new[1],theta_1=theta_curl_new[2],theta_2=theta_curl_new[3],x_1=data_new$X1,x_2=data_new$X2))
+  col_3_new = eval(D(expression(theta_0*((x_1)^theta_1)*((x_2)^theta_2)),'theta_2'),list(theta_0=theta_curl_new[1],theta_1=theta_curl_new[2],theta_2=theta_curl_new[3],x_1=data_new$X1,x_2=data_new$X2))
+  F_theta_new = cbind(col_1_new,col_2_new,col_3_new)
+  
+  delta_new = pinv(t(F_theta_new) %*% F_theta_new) %*% t(F_theta_new) %*% (Y_new - f_theta_new)
+  theta_curl_new = as.matrix(theta_curl_new) + delta_new
+  
+  if(max(abs(delta_new))<0.0001)
+  {
+    break
+  }
+}
+
+print(paste0("The final estimates of theta are : ",theta_curl_new[1],",",theta_curl_new[2]," and ",theta_curl_new[3]," respectively."))
+print(paste0("The algorithm converges at the ",iter," th iteration."))
+```
+
+The final estimates for the new machine are `r theta_curl_new`.My algorithm converged at the `r iter`rd iteration. The \verb+nls()+ again gives similar results.
+
+```{r,echo=FALSE,results=FALSE}
+#Using nls() to check the final estimates found after using the Gauss_Newton Algorithm
+mod_nls_new =  nls(Y ~ theta0 * X1^theta1 * X2^theta2, data = data_new, start = list(theta0 = initial_theta_curl_new[1], theta1 = initial_theta_curl_new[2], theta2 = initial_theta_curl_new[3]))
+summary(mod_nls_new)
+```
+
+
+To compare the behaviour of the model on the two given datasets, I plot out the residuals and check if the model assumptions are successfully met : 
+
+```{r,echo=FALSE}
+par(mfrow=c(2,2))
+plot(predict(mod_nls),residuals(mod_nls),xlab = "Fitted values",ylab = "Residuals",main = "Old Machine")
+abline(0,0,col="red")
+plot(predict(mod_nls_new),residuals(mod_nls_new),xlab = "Fitted values",ylab = "Residuals",main = "New Machine")
+abline(0,0,col="red")
+qqnorm(data_old$Y-predict(mod_nls))
+qqline(data_old$Y-predict(mod_nls),col="red")
+qqnorm(data_new$Y-predict(mod_nls_new))
+qqline(data_new$Y-predict(mod_nls_new),col="red")
+
+#Computing the pseudo R-squared values 
+r_squared_pseudo_old = 1 - (sum(((data_old$Y) - (as.matrix(model(theta_curl,(data_old$X1),(data_old$X2)),nrow=18)))^2)/sum(((data_old$Y) - mean(data_old$Y))^2))
+r_squared_pseudo_new = 1 - (sum(((data_new$Y) - (as.matrix(model(theta_curl,(data_new$X1),(data_new$X2)),nrow=18)))^2)/sum(((data_new$Y) - mean(data_new$Y))^2))
+```
+
+The points bounce off the zero line to an optimum distance in the residuals vs fitted without following any specific pattern plots. In the QQ-plots for the residuals, the points are quite perfectly aligned to the slope. So, it is evident from the plots and the pseudo R-squared values of `r r_squared_pseudo_old` and `r r_squared_pseudo_new` for the old and new machine datasets respectively that the model fits the data quite well and the model assumptions of homogeneous variance, normality of the residuals are met. The pseudo R-squared value for the new machine falls a bit due to the fact of fitting the exact same model, though which might not be the case in reality, but, it can be surely said that the data from the new machine would be obtained from a model with very similar structure(changed coefficients).
+
+   In conclusion, I can say that the model fits the datasets of the old and the new machine quite well,though they might not come from exactly the same model due to the fact of different coefficients. The specified model can be relied upon in the future to study the mentioned chemical process in the presence of temperature and pressure as covariates. Also, as a model can never be completely perfect, there is always room for improvement in the fact that some transformations can be done on the response variable so that the normality assumption of the residual can be met more perfectly as compared to the given model.
+   
+\newpage
+   
+**PROBLEM 2.** 
+
+
+```{r,echo=FALSE,results=FALSE}
+#Loading the data and splitting the dataset into train and test sets
+set.seed(153535)
+data_2 = data.frame(read.csv("C:/Users/Jayaditya Nath/Documents/Q2.csv",header = T))
+data.training.id <- sample(1:dim(data_2)[1], 4500, replace = FALSE)
+data_training <- data_2[data.training.id,]
+data_test <- data_2[-data.training.id,]
+```
+
+The problem deals with the fact of finding out the most prominent risk factors for congestive heart failure (CHF) and to what extent do they affect the occurence of CHF. For this purpose, I am using a dataset consisting of 5513 individuals from the US, who were surveyed during 2013-2014. The data consists of 12 predictor variables, v.i.z, ID, Gender(0=male,1=female), Age, Race(0=not Africa-American,1=African-American), Educ(Education level-binary), BP(daignosed with hypertension or not), Chol(high cholesterol or not), Diabetes(Diagnosed with diabetes or not), CAD(diagnosed with coronary artery disease or not), PA(Does at least 10 minutes of moderate physical exercise once a week or not), BMI and Alcohol(abnormal alcohol consumption or not). For this purpose, I am separating the entire data into the training set(4500 data points) and testing set(rest of the data),solely for prediction purposes.
+
+Before moving on to model fitting, I would like to explore the data more to get a better understanding of the possible significant covariates. Primarily, I would like to consider the pairwise scatterplot and correlation matrix : 
+
+```{r,echo=FALSE,results=FALSE,fig.keep='none'}
+pairs(data_training)
+cor(data_training)
+```
+
+There does not seem to be any problem of multicollinearity. Also, I feel that understanding the possible effect of the covariates on the response variables should majorly rely upon the discretion of the researcher. From this understanding, I feel that ID and Education level does not have any significant effect on whether a person has been diagnosed with CHF or not and thus, I discard thesse two covariates. 
+Now, I would try to find the possible interaction effects between Age, Diabetes and Coronary Artery Disease with all other covariates through interaction plots. 
+
+```{r,echo=FALSE,results=FALSE,fig.height=3,fig.keep='first'}
+
+#PA with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$PA, data_training$Gender, data_training$CHF,xlab = "PA",ylab = "CHF",main="Interaction",trace.label = "Gender")
+interaction.plot(data_training$PA, data_training$CAD, data_training$CHF,xlab = "PA",ylab = "CHF",main="Interaction",trace.label = "CAD")
+interaction.plot(data_training$PA, data_training$Diabetes, data_training$CHF,xlab = "PA",ylab = "CHF",main="Interaction",trace.label = "Diabetes")
+
+#Age with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$Age, data_training$Gender, data_training$CHF)
+interaction.plot(data_training$Age, data_training$CAD, data_training$CHF)
+interaction.plot(data_training$Age, data_training$Diabetes, data_training$CHF)
+
+
+
+
+#BMI with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$BMI, data_training$Gender, data_training$CHF)
+interaction.plot(data_training$BMI, data_training$CAD, data_training$CHF)
+interaction.plot(data_training$BMI, data_training$Diabetes, data_training$CHF)
+
+
+#Race with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$Race, data_training$Gender, data_training$CHF)
+interaction.plot(data_training$Race, data_training$CAD, data_training$CHF)
+interaction.plot(data_training$Race, data_training$Diabetes, data_training$CHF)
+
+
+#Chol with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$Chol, data_training$Gender, data_training$CHF)
+interaction.plot(data_training$Chol, data_training$CAD, data_training$CHF)
+interaction.plot(data_training$Chol, data_training$Diabetes, data_training$CHF)
+
+#Alcohol with CHF
+par(mfrow=c(1,3))
+interaction.plot(data_training$Alcohol, data_training$Gender, data_training$CHF)
+interaction.plot(data_training$Alcohol, data_training$CAD, data_training$CHF)
+interaction.plot(data_training$Alcohol, data_training$Diabetes, data_training$CHF)
+
+```
+
+It can be seen that Diabetes:BMI, Race:Alcohol, CAD:Alcohol etc. have possible interactions among themselves, which means that the effect of other predictors on the response change for some covariates. 
+
+Now to model the data, it can be seen that the responses are binary in nature(i.e, outcome is either 0 or 1). I specify the model as : 
+
+$Y_{i} = \frac{exp(x_{i}^{'}\beta)}{1+exp(x_{i}^{'}\beta)} + \epsilon_{i}$, where $\epsilon_{i}$ is the non-Gaussian error term with mean 0 and heterogeneous variance.
+
+The model can be alternatively written as a logit function : 
+$logit (p_{i}) = log(\frac{p_{i}}{1-p_{i}})$ , where $p_{i} = \frac{exp(x_{i}^{'}\beta)}{1+exp(x_{i}^{'}\beta)}$ and $0<p_{i}<1$.
+
+Primarily, I have fitted the model with the selected covariates along with the first order interactions in RStudio and considered it as the full model. Then, I use stepwise regression to find an optimal model with the interactions present, which also resulted in a lower AIC value. This final model(CHF ~ Age + Race + BP + Diabetes + CAD + PA + BMI + Alcohol + Age:Diabetes + Age:CAD + Race:CAD + Race:Alcohol + Diabetes:CAD + Diabetes:BMI + Diabetes:Alcohol + CAD:BMI + CAD:Alcohol + PA:Alcohol + BMI:Alcohol) partly matches with the graphical representations I have done earlier, but there are some differences for sure. 
+
+```{r,echo=FALSE,results=FALSE}
+mod_glm = glm(CHF~(Gender+Age+Race+BP+Chol+Diabetes+CAD+PA+BMI+Alcohol)^2,data = data_training,family = binomial(link = "logit"))
+summary(mod_glm)
+
+
+
+mod_fin = glm(CHF ~ Age + Race + BP + Diabetes + CAD + PA + BMI + Alcohol + 
+                Age:Diabetes + Age:CAD + Race:CAD + Race:Alcohol + Diabetes:CAD + 
+                Diabetes:BMI + Diabetes:Alcohol + CAD:BMI + CAD:Alcohol + 
+                PA:Alcohol + BMI:Alcohol,data=data_training,family = binomial(link = "logit"))
+summary(mod_fin)
+```
+
+It is evident from the residual vs fitted plot that the points are not randomly scattered and there is pattern in them. This signifies the presence of heterogeneous error variances. The QQ-plot also detects the lack of normality in the residuals. All these are desired as it perfectly meets with assumptions of the generalized linear model : non-constancy error variance, non-normality of the error terms, no autocorrelation among the errors. 
+
+```{r,echo=FALSE,fig.height=3}
+par(mfrow=c(1,2))
+plot(predict(mod_fin),residuals(mod_fin),xlab = "Fitted values",ylab = "Residuals",main = "Residuals vs Fitted values")
+abline(0,0,col="red")
+qqnorm(residuals.glm(mod_fin))
+qqline(residuals.glm(mod_fin),col="red")
+```
+
+Next, I have performed different testing of hypothesis to validate the goodness of fit of the model, v.i.z, the Deviance test and the Hosmer-Lemeshow test. 
+
+```{r,echo=FALSE,results=FALSE,message=FALSE}
+#Deviance test
+dev_test_glm = mod_fin$null.deviance-mod_fin$deviance
+p_val_dev_glm = 1 - pchisq(q=dev_test_glm,df=1)
+p_val_dev_glm
+#Reject the null, thus, at least one covariate is related to the response
+
+
+#Hosmer-Lemeshow goodness of fit test
+library(ResourceSelection)
+hoslem.test(data_training$CHF,fitted(mod_fin))
+#Fail to reject the null, thus the model fits the data well
+```
+
+The deviance test yields a p-value less than 0.05 leading to stong evidence against the null and thus the selected covariates have significant effect on the response. The Hosmer-Lemeshow test yielded a p-value greater than the significance level of 0.05, leading to to strong evidence in favour of the null hypothesis and thus concluding that the final model fits the data well.
+
+Coming to the predictive ability of the model, I have used the test dataset to compute the confusion matrices with cut-off values 0.5, 0.3 and 0.1 respectively and plotted out the value of area under the curve. 
+
+```{r,echo=FALSE,results=FALSE,fig.height=3,warning=FALSE,message=FALSE}
+library(pROC)
+library(ROCR)
+predict_glm_test_1 = ifelse(predict(mod_fin,newdata = data_test, type = "response")>0.5,1,0)
+predict_glm_test_2 = ifelse(predict(mod_fin,newdata = data_test, type = "response")>0.3,1,0)
+predict_glm_test_3 = ifelse(predict(mod_fin,newdata = data_test, type = "response")>0.1,1,0)
+
+conf_mat_test_1 = table(data_test$CHF,predict_glm_test_1)
+conf_mat_test_2 = table(data_test$CHF,predict_glm_test_2)
+conf_mat_test_3 = table(data_test$CHF,predict_glm_test_3)
+
+conf_mat_test_1
+conf_mat_test_2
+conf_mat_test_3
+
+auc_val_1 = auc(roc(data_test$CHF,predict_glm_test_1))
+auc_val_1
+auc_val_2 = auc(roc(data_test$CHF,predict_glm_test_2))
+auc_val_2
+auc_val_3 = auc(roc(data_test$CHF,predict_glm_test_3))
+auc_val_3
+
+par(mfrow=c(1,2))
+plot(seq(0.1,0.5,0.2),c(auc_val_3,auc_val_2,auc_val_1),type = "line",col="red",xlab = "AUC value",ylab = "Cut-off value",main="Trend in AUC value")
+plot(performance(prediction(predict_glm_test_3,data_test$CHF),"tpr","fpr"),main="ROCR")
+```
+
+It is evident from the curves that as I decrease the cut-off value for prediction, I get a better sensitivity and specificity rate with an AUC value of approximately 72% for cut-off value 0.1. I have intentionally lowered the cut-off value to reduce the bias towards 0's as it can be observed that there is a tremendous unbalance in the data(more number of 0's than 1's). 
+
+In conclusion, I can say that the selected predictor variables along with the significant interactions are the most prominent risk factors for CHF in consideration with the generalized linear model with a decent prediction ability. Furthermore, some improvements can be done to the model by reducing the imbalance in the dataset(by \verb+ROSE()+ in R) rather than reducing the cut-off value, which would help to keep essence of the original data intact.
+
+\newpage
+
+References : 
+
+(i) Statistics 8320: Data Analysis II Generalized Linear Models by Christopher K. Wikle
+
+(ii) Statistics 8320: Data Analysis II Nonlinear Regression by Christopher K. Wikle
+
+(iii) Non-linear regression in R by Christian Ritz & Jens Carl Streibig
+
+(iv) I have used Google to get better insight about the documentation regarding few R functions.

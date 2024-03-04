@@ -1,0 +1,460 @@
+---
+title: "STAT_8320_HW1"
+author: "JAYADITYA NATH"
+date: "2024-02-09"
+output: pdf_document
+---
+
+PROBLEM 1.
+
+
+
+Here, the linear regression model under consideration is : 
+
+$\textbf{Y} = \textbf{X}\boldsymbol{\beta} + \boldsymbol{\epsilon}$
+
+The design matrix is of full column rank and $\boldsymbol{\epsilon} \sim (0,\sigma^{2}\textbf{I})$
+
+Simplifying the right-hand side of the mentioned decomposition, 
+
+$\|Y - X\hat{\beta}\|^2 + \|X\hat{\beta}\|^2$
+
+$= (Y - X\hat{\beta})^{'}(Y - X\hat{\beta}) + (X\hat{\beta})^{'}(X\hat{\beta})$
+
+$= Y^{'}Y-\hat{\beta}^{'}X^{'}Y-Y^{'}X\hat{\beta}+\hat{\beta}^{'}X^{'}X\hat{\beta}+\hat{\beta}^{'}X^{'}X\hat{\beta}$
+
+$=Y^{'}Y-\hat{\beta}^{'}X^{'}Y-Y^{'}X\hat{\beta}+2\hat{\beta}^{'}X^{'}X\hat{\beta}$
+
+Plugging in the value of $\hat{\beta}$, 
+
+$=Y^{'}Y-((X^{'}X)^{-1}X^{'}Y)^{'}X^{'}Y-Y^{'}X(X^{'}X)^{-1}X^{'}Y+2(X^{'}X)^{-1}X^{'}Y)^{'}X^{'}X(X^{'}X)^{-1}X^{'}Y)$ 
+
+$=Y^{'}Y-2Y^{'}X(X^{'}X)^{-1}X^{'}Y+2Y^{'}X(X^{'}X)^{-1}X^{'}Y$
+
+$=Y^{'}Y$ 
+
+$=Y^{'}Y-\hat{\beta}^{'}X^{'}Y+\hat{\beta}^{'}X^{'}Y$
+
+Thus, $Y^{'}Y-\hat{\beta}^{'}X^{'}Y$ comprises of SSE and $\hat{\beta}^{'}X^{'}Y$ comprises of SSM.
+
+
+
+
+
+PROBLEM 2. 
+
+
+Let $\textbf{X} = \begin{pmatrix}
+X_{1}\\
+X_{2}\\
+X_{3}
+\end{pmatrix} \sim N(\boldsymbol{\mu}=\begin{pmatrix}
+-1\\
+2\\
+1
+\end{pmatrix}, \Sigma=\begin{pmatrix}
+3 & 2 & 0\\
+2 & 4 & 1\\
+0 & 1 & 3
+\end{pmatrix} )$
+
+Part (a)
+Let, $\boldsymbol{X_{1}},\boldsymbol{X_{2}},...,\boldsymbol{X_{50}}$ are 50 random vector samples, each of size 3X1 from the multivariate normal distribution mentioned above. 
+
+Now, using the property of large sample and using Central Limit Theorem,
+The sample mean $\boldsymbol{\bar{X}} \sim N(\boldsymbol{\mu},\Sigma/n) \equiv N(\boldsymbol{\mu}=\begin{pmatrix}
+-1\\
+2\\
+1
+\end{pmatrix}, \Sigma=\begin{pmatrix}
+3/50 & 1/25 & 0\\
+1/25 & 2/25 & 1/50\\
+0 & 1/50 & 3/50
+\end{pmatrix} )$
+
+Part (b) 
+
+Let, Z = $X_{1}+3X_{2}+2X_{3}$
+From part (a), we know that : 
+
+
+$\textbf{X} = \begin{pmatrix}
+X_{1}\\
+X_{2}\\
+X_{3}
+\end{pmatrix} \sim N(\boldsymbol{\mu}=\begin{pmatrix}
+-1\\
+2\\
+1
+\end{pmatrix}, \Sigma=\begin{pmatrix}
+3 & 2 & 0\\
+2 & 4 & 1\\
+0 & 1 & 3
+\end{pmatrix} )$
+
+Now, $\boldsymbol{Z} = \boldsymbol{a}^{'} \boldsymbol{X}$, where $\boldsymbol{a}=\begin{pmatrix}
+    1\\
+    3\\
+    2
+    \end{pmatrix}$
+
+So, E(Z) = $\boldsymbol{a}^{'}E(\boldsymbol{X})$
+=$\begin{pmatrix}
+1 & 3 & 2
+    \end{pmatrix}\begin{pmatrix}
+        -1\\
+        2\\
+        1
+    \end{pmatrix}$
+= 7
+
+Again, V(Z) = V($\boldsymbol{a}^{'}\boldsymbol{X}$)
+=$\boldsymbol{a}^{'}\Sigma\boldsymbol{a}$
+=$\begin{pmatrix}
+1 & 3 & 2
+    \end{pmatrix}\begin{pmatrix}
+3 & 2 & 0\\
+2 & 4 & 1\\
+0 & 1 & 3
+\end{pmatrix}\begin{pmatrix}
+    1\\
+    3\\
+    2
+    \end{pmatrix}$
+= 75
+
+
+So, Z $\sim$ N(7,$(\sqrt{75})^2$)
+
+
+
+PROBLEM 3.
+
+
+Loading the data in R : 
+
+
+```{r}
+library(dplyr)
+data_3_ini = read.table("C:\\Users\\Jayaditya Nath\\Downloads\\S24hw1pr3.txt",sep = ",")
+data_3 = as.data.frame(data_3_ini[2:21,] %>% rename("X"="V1","Y"="V2"))
+data_3 
+```
+
+
+
+Part (a)
+
+
+```{r}
+model_3 = function(theta_vec,x)
+{
+  theta_0 = theta_vec[1]
+  theta_1 = theta_vec[2]
+  theta_2 = theta_vec[3]
+  y = (theta_0)/(1 + exp(-theta_1*(x-theta_2)))
+  return(y)
+}
+
+theta_0_candidate = c(7.30, 7.41, 7.52, 7.63, 7.74, 7.86, 7.97, 8.08, 8.19, 8.30)
+theta_1_candidate = c(0.30, 0.34, 0.39, 0.43, 0.48, 0.52, 0.57, 0.61, 0.66, 0.70)
+theta_2_candidate = c(0.80, 0.84, 0.89, 0.93, 0.98, 1.02, 1.07, 1.11, 1.16, 1.20)
+
+#Grid Search Algorithm
+
+best_est_sse = 1000000
+for (theta_0 in theta_0_candidate) {
+  for (theta_1 in theta_1_candidate) {
+    for (theta_2 in theta_2_candidate) {
+      sse_est = sum((as.double(data_3$Y) - model_3(c(theta_0,theta_1,theta_2),as.double(data_3$X)))^2)
+      
+      if (sse_est < best_est_sse) {
+        best_est_sse <- sse_est
+        theta_curl = c(theta_0, theta_1, theta_2)
+      }
+    }
+  }
+}
+
+print(paste0("The best estimates of theta are : ",theta_curl[1],",",theta_curl[2]," and ",theta_curl[3]," respectively."))
+print(paste0("The SSE of the best estimates of theta is : ",best_est_sse))
+```
+
+
+
+Part (b) 
+
+
+```{r}
+print("The derivates of the mean function with respect to theta_0, theta_1 and theta_2 are : ")
+D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0')
+D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1')
+D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2')
+```
+
+
+
+Part (c) 
+
+
+```{r}
+#Gauss-Newton Algorithm
+library(pracma)
+Y = as.matrix(as.double(data_3$Y),nrow=20)
+theta_curl_gauss_new = theta_curl
+
+f_theta_gauss_new = as.matrix(model_3(theta_curl_gauss_new,as.double(data_3$X)),nrow=20)
+col_1_gauss_new = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0'),list(theta_1=theta_curl_gauss_new[2],theta_2=theta_curl_gauss_new[3],x=as.double(data_3$X)))
+col_2_gauss_new = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1'),list(theta_1=theta_curl_gauss_new[2],theta_2=theta_curl_gauss_new[3],x=as.double(data_3$X)))
+col_3_gauss_new = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2'),list(theta_0=theta_curl_gauss_new[1],theta_1=theta_curl_gauss_new[2],theta_2=theta_curl_gauss_new[3],x=as.double(data_3$X)))
+F_theta_gauss_new = cbind(col_1_gauss_new,col_2_gauss_new,col_3_gauss_new)
+  
+delta_gauss_new = pinv(t(F_theta_gauss_new) %*% F_theta_gauss_new) %*% t(F_theta_gauss_new) %*% (Y - f_theta_gauss_new)
+theta_curl_gauss_new = as.matrix(theta_curl_gauss_new) + delta_gauss_new
+  
+if(max(abs(delta_gauss_new))<0.0001)
+  {
+    break
+  }
+
+print(paste0("The final estimates of theta are : ",theta_curl_gauss_new[1],",",theta_curl_gauss_new[2]," and ",theta_curl_gauss_new[3]," respectively."))
+print("The Jacobian matrix is : ")
+F_theta_gauss_new
+print("The function value vector is : ")
+f_theta_gauss_new
+print("The inverse of cross-product of the Jacobian matrix is : ")
+pinv(t(F_theta_gauss_new) %*% F_theta_gauss_new)
+print(paste0("The increment vector comprises of : ",delta_gauss_new[1],",",delta_gauss_new[2]," and ",delta_gauss_new[3]," respectively."))
+```
+
+
+Part (d) 
+
+
+```{r}
+#Steep Descent Algorithm
+gradient = matrix(c(sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_0'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+),sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_1'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+),sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_2'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+)),nrow=3)
+alpha_learn = 1
+theta_curl_est = as.matrix(theta_curl,nrow=3) - (alpha_learn*(diag(1,nrow=length(theta_curl),ncol=3) %*% gradient))
+print(paste0("The final estimates are : ",theta_curl_est[1],", ",theta_curl_est[2]," and ",theta_curl_est[3]," respectively."))
+```
+
+
+
+Part (e) 
+
+
+```{r}
+library(numDeriv)
+library(matlib)
+hess_mat = matrix(rep(0,9),nrow = 3)
+
+for(i in 1:dim(data_3)[1])
+{
+  dat <<- as.double(data_3$X)[i]
+  new_mod = function(theta_new)
+  {
+    return(theta_new[1])/(1 + exp(-theta_new[2]*(dat-theta_new[3])))
+    
+  }
+new_mod(theta_curl)
+  
+hess_mat = hess_mat + ((as.double(data_3$Y)[i] - model_3(theta_curl,as.double(data_3$X)[i])) * (hessian(func = new_mod,c(7.74 ,0.48, 0.98))))
+}
+
+gradient_new_rap = matrix(c(sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_0'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+),sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_1'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+),sum(eval(D(expression((y-(theta_0)/(1 + exp(-theta_1*(x-theta_2))))^2),'theta_2'),list(x=as.double(data_3$X),theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],y=as.double(data_3$Y)))
+)),nrow=3)
+alpha_learn_new_rap = 1
+col_1_new_rap = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0'),list(theta_1=theta_curl[2],theta_2=theta_curl[3],x=as.double(data_3$X)))
+col_2_new_rap = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1'),list(theta_1=theta_curl[2],theta_2=theta_curl[3],x=as.double(data_3$X)))
+col_3_new_rap = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2'),list(theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],x=as.double(data_3$X)))
+F_theta_new_rap = cbind(col_1_new_rap,col_2_new_rap,col_3_new_rap)
+hess_mat_final = 2 * ((t(F_theta_new_rap)%*%F_theta_new_rap)-hess_mat)
+alpha_learn_new_rap = 1
+theta_curl_est_new_rap = as.matrix(theta_curl,nrow=3) - (alpha_learn_new_rap * inv(hess_mat_final) %*% gradient_new_rap)
+print(paste0("The final estimates are : ",theta_curl_est_new_rap[1],", ",theta_curl_est_new_rap[2]," and ",theta_curl_est_new_rap[3]," respectively."))
+```
+
+
+
+
+Part (f) 
+
+
+Sub-part (i) 
+
+
+```{r}
+theta_est_conv = c(7.6, 0.5, 1)
+
+col_1_ci = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=as.double(data_3$X)))
+col_2_ci = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=as.double(data_3$X)))
+col_3_ci = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2'),list(theta_0=theta_est_conv[1],theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=as.double(data_3$X)))
+F_theta_ci = cbind(col_1_ci,col_2_ci,col_3_ci)
+f_theta_ci = as.matrix(model_3(theta_est_conv,as.double(data_3$X)),nrow=20)
+sigma = sqrt((t(Y - f_theta_ci) %*% (Y - f_theta_ci))/(nrow(data_3)-length(theta_est_conv)))
+print(paste0("95% confidence interval for theta_2 is (",theta_est_conv[2]-(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta_ci) %*% F_theta_ci)[2,2])),",",theta_est_conv[2]+(qt(0.025,17,lower.tail = F)*sigma[1,1]*sqrt(inv(t(F_theta_ci) %*% F_theta_ci)[2,2])),")"))
+```
+
+
+Sub-part (ii) 
+
+
+
+```{r}
+f_theta_ci_2 = model_3(theta_est_conv,2.7)
+col_1_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+col_2_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+col_3_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2'),list(theta_0=theta_est_conv[1],theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+F_theta_ci_2 = cbind(col_1_ci_2,col_2_ci_2,col_3_ci_2)
+sigma_2 = sqrt((t(Y - f_theta_ci_2) %*% (Y - f_theta_ci_2))/(nrow(data_3)-length(theta_est_conv)))
+print(paste0("95% confidence interval for Y|X=2.7 is (",f_theta_ci_2-(qt(0.025,17,lower.tail = F)*sigma_2[1,1]*sqrt(F_theta_ci_2 %*% pinv(t(F_theta_ci) %*% F_theta_ci) %*% t(F_theta_ci_2))),",",f_theta_ci_2+(qt(0.025,17,lower.tail = F)*sigma_2[1,1]*sqrt(F_theta_ci_2 %*% pinv(t(F_theta_ci) %*% F_theta_ci) %*% t(F_theta_ci_2))),")"))
+
+print(paste0("95% prediction interval for Y|X=2.7 is (",f_theta_ci_2-(qt(0.025,17,lower.tail = F)*sigma_2[1,1]*sqrt(1 + (F_theta_ci_2 %*% pinv(t(F_theta_ci) %*% F_theta_ci) %*% t(F_theta_ci_2)))),",",f_theta_ci_2+(qt(0.025,17,lower.tail = F)*sigma_2[1,1]*sqrt(1 + (F_theta_ci_2 %*% pinv(t(F_theta_ci) %*% F_theta_ci) %*% t(F_theta_ci_2)))),")"))
+```
+
+
+
+Sub-part (iii) 
+
+
+
+```{r}
+library(pracma)
+h_theta_given = theta_est_conv[3]/theta_est_conv[2]
+col_1_test = eval(D(expression(theta_2/theta_1),'theta_0'),list(theta_est_conv[1],theta_est_conv[2],theta_est_conv[3]))
+col_2_test = eval(D(expression(theta_2/theta_1),'theta_1'),list(theta_est_conv[1],theta_est_conv[2],theta_est_conv[3]))
+col_3_test = eval(D(expression(theta_2/theta_1),'theta_2'),list(theta_est_conv[1],theta_est_conv[2],theta_est_conv[3]))
+h_vect = c(col_1_test,col_2_test,col_3_test)
+sigma = sqrt((t(Y - f_theta_ci) %*% (Y - f_theta_ci))/(nrow(data_3)-length(theta_est_conv)))
+col_1_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_0'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+col_2_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_1'),list(theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+col_3_ci_2 = eval(D(expression((theta_0)/(1 + exp(-theta_1*(x-theta_2)))),'theta_2'),list(theta_0=theta_est_conv[1],theta_1=theta_est_conv[2],theta_2=theta_est_conv[3],x=2.7))
+F_theta_ci_2 = cbind(col_1_ci_2,col_2_ci_2,col_3_ci_2)
+
+print(paste0("The confidence interval for the given parameter combination is :(",h_theta_given - (qt(0.025,17,lower.tail = F)*sigma*sqrt(t(h_vect) %*% pinv(t(F_theta_ci_2) %*% F_theta_ci_2) %*% h_vect))
+ ,",",h_theta_given + (qt(0.025,17,lower.tail = F)*sigma*sqrt(t(h_vect) %*% pinv(t(F_theta_ci_2) %*% F_theta_ci_2) %*% h_vect))
+,")"))
+```
+
+Conclusion : Since, the value of the parameter combination specified in the null hypothesis is contained within the confidence interval, we fail to reject the null hypothesis.
+
+
+Sub-part (iv)
+
+
+```{r}
+R_sq_pseudo = 1 - (sum((as.double(data_3$Y) - (as.matrix(model_3(theta_est_conv,as.double(data_3$X)),nrow=20)))^2)/sum((as.double(data_3$Y) - mean(as.double(data_3$Y)))^2))
+print(paste0("The value of pseudo R_squared is : ",R_sq_pseudo))
+```
+
+
+
+Sub-part (v) 
+
+
+```{r}
+F_theta_hat = cbind(col_1_ci,col_2_ci,col_3_ci)
+mat_hat = F_theta_hat %*% inv(t(F_theta_hat) %*% F_theta_hat) %*% t(F_theta_hat)
+for(i in seq_along(diag(mat_hat)))
+{
+  if(mat_hat[i,i]>((2*3)/20))
+  {
+    print(paste0("The ",i," th observation exhibits substantial leverage."))
+  }
+  else
+  {
+    print(paste0("The ",i," th observation does not exhibit substantial leverage."))
+  }
+}
+```
+
+
+
+PROBLEM 4. 
+
+
+Loading the data in R : 
+
+
+```{r}
+library(dplyr)
+
+data_4 = read.table("C:\\Users\\Jayaditya Nath\\Downloads\\S24hw1pr4.txt")
+data_4 = as.data.frame(data_4 %>% rename("X"="V1","Y"="V2"))
+data_4
+```
+
+
+Part (a)
+
+I set the initial values of the parameters by graphing out the function with different parameter values(by trial and error method) overlaying the scatterplot :
+
+
+```{r}
+
+model = function(theta_vec,x)
+{
+  theta_0 = theta_vec[1]
+  theta_1 = theta_vec[2]
+  theta_2 = theta_vec[3]
+  y = (theta_0 + theta_1*x)/(1 + theta_2*exp(0.4*x))
+  return(y)
+}
+
+initial_theta_curl = c(14,-6,4)
+plot(data_4$X,data_4$Y,xlab="X",ylab="Y",main = "Curve of the model overlaying the scatter plot")
+lines(data_4$X,model(initial_theta_curl,data_4$X))
+```
+
+
+
+Part (b)
+
+
+```{r}
+#Gauss_Newton Algorithm
+
+library(pracma)
+Y = as.matrix(data_4$Y,nrow=250)
+theta_curl = initial_theta_curl
+
+for(iter in 1:10)
+{
+  f_theta = as.matrix(model(theta_curl,data_4$X),nrow=250)
+  col_1 = eval(D(expression((theta_0 + theta_1*x)/(1 + theta_2*exp(0.4*x))),'theta_0'),list(theta_2=theta_curl[3],x=data_4$X))
+  col_2 = eval(D(expression((theta_0 + theta_1*x)/(1 + theta_2*exp(0.4*x))),'theta_1'),list(theta_2=theta_curl[3],x=data_4$X))
+  col_3 = eval(D(expression((theta_0 + theta_1*x)/(1 + theta_2*exp(0.4*x))),'theta_2'),list(theta_0=theta_curl[1],theta_1=theta_curl[2],theta_2=theta_curl[3],x=data_4$X))
+  F_theta = cbind(col_1,col_2,col_3)
+  
+  delta = pinv(t(F_theta) %*% F_theta) %*% t(F_theta) %*% (Y - f_theta)
+  theta_curl = as.matrix(theta_curl) + delta
+  
+  if(max(abs(delta))<0.0001)
+  {
+    break
+  }
+}
+
+
+print(paste0("The final estimates of theta are : ",theta_curl[1],",",theta_curl[2]," and ",theta_curl[3]," respectively."))
+print(paste0("The value of sigma_squared is : ",(t(Y - f_theta) %*% (Y - f_theta))/(nrow(data_4)-dim(theta_curl)[1])))
+print("The variance-covariance matrix is of the form : ")
+as.numeric((t(Y - f_theta) %*% (Y - f_theta))/(nrow(data_4)-dim(theta_curl)[1]))*as.matrix(solve(crossprod(F_theta)))
+print(paste0("The algorithm converges at the ",iter," th iteration."))
+print(paste0("The value of the objective function at convergence is : ",sum((Y-f_theta)^2)))
+print("The convergence criterion used above relates to the minor change in parameter estimates.")
+
+par(mfrow=c(1,2)) 
+plot(data_4$X,data_4$Y,xlab="X",ylab="Y",main = "Curve fitted based on guess estimates")
+lines(data_4$X,model(initial_theta_curl,data_4$X),col="green",lwd=2)
+plot(data_4$X,data_4$Y,xlab="X",ylab="Y",main="Curve fitted based on final estimates")
+lines(data_4$X,model(theta_curl,data_4$X),col="magenta",lwd=2)
+```
+
+Comment : The only issue I recognized while solving the given problem is that the Jacobian matrix was singular and thus not invertible. So, as a remedy, I used the Moore-Penrose inverse.
