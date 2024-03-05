@@ -1,0 +1,214 @@
+---
+title: "STAT_8320_HW2_JayadityaNath"
+author: "JAYADITYA NATH"
+date: "2024-03-04"
+output: pdf_document
+---
+
+Part (f) 
+
+```{r}
+k = 15
+data_1 <- data.frame(y = c(3, 17, 12, 1, 19, 9, 8),x_1 = c(0, 1, 1, 0, 1, 0, 1),x_2 = c(35, 60, 25, 20, 50, 55, 30))
+beta_0_hat =  c(2.7, -0.4, -0.01)
+design_mat = cbind(1, data_1$x_1, data_1$x_2)
+
+mu = exp(design_mat %*% beta_0_hat )
+V = diag(c(mu + (mu^2/k)))
+
+F = matrix(data = NA, nrow = 7, ncol = 3)
+
+for(i in 1:nrow(F)){
+  for(j in 1:ncol(F)){
+    F[i,j] = design_mat[i,j]*mu[i]
+  }
+}
+
+library(matlib)
+beta_1_hat <- beta_0_hat + inv(t(F) %*% inv(V) %*% F) %*% (t(F) %*% inv(V) %*% (data_1$y - mu))
+print("The value of F is : ")
+F
+print("The value of V is : ")
+V
+print("The value of mu is : ")
+mu
+```
+
+The value of $\hat{\beta}^{(1)}$ is (`r beta_1_hat`)'.
+
+Part (g) 
+
+```{r}
+L = matrix(c(0,1,0,0,1,1), nrow = 2, byrow = TRUE)
+diff_vec = c(-0.1, -0.5)
+W = t(L %*% beta_0_hat - diff_vec) %*% inv(L %*% (inv(t(F) %*% inv(V) %*% F)) %*% t(L)) %*% (L %*% beta_0_hat - diff_vec)
+p_val = 1 - pchisq(W, df = qr(L)$rank)
+
+print("The value of L is : ")
+L
+```
+
+The value of the Wald test statistic is `r W`.
+
+The p-value for the given test is `r p_val`.
+
+As he p-value is less than $\alpha = 0.05$, we reject the null hypothesis. 
+
+
+Part (h) 
+
+```{r}
+data_1_h <- read.csv("C:/Users/Jayaditya Nath/Documents/nbreg.csv")
+
+library(MASS)
+mod_h <- glm.nb(daysabs ~ male + math + langarts, data = data_1_h)
+summary(mod_h)
+
+mod_h_null = model <- glm.nb(daysabs ~ 1, data = data_1_h)
+summary(mod_h_null)
+
+dev_test = mod_h$null.deviance - mod_h$deviance
+p_val_dev_test = 1-pchisq(q = dev_test, df = 1)
+
+over_disp_0_1 = mod_h$deviance/mod_h$df.residual
+```
+
+Primarily, the outputs of the negative-binomial model show that 'male' and 'langarts' seem to be significant predictors for predicting the attendance behaviour  of high school juniors. This means that for one unit increase in male and langarts, we would get to see a 0.43 and 0.01 decrease in the expected log-count of the number of days absent. 
+
+The p-value = `r p_val_dev_test` of the deviance test being less than 0.05, we have strong evidence against the null hypothesis mentioning that the null model(intercept only) is better. 
+
+The value of the dispersion parameter = `r over_disp_0_1` being more than 1 depicts that there exists a problem of over-dispersion. 
+
+
+PROBLEM 2. 
+
+
+```{r}
+data_2_trai = read.table("C:/Users/Jayaditya Nath/Documents/auto_mpg_data2_train.dat")
+data_2_test = read.table("C:/Users/Jayaditya Nath/Documents/auto_mpg_data2_test.dat")
+mpg01 <- ifelse(data_2_trai$V1 > median(data_2_trai$V1), 1, 0)
+data_2_train = cbind.data.frame(data_2_trai,mpg01)
+```
+
+
+
+Part (a) 
+
+```{r}
+pairs(data_2_train)
+```
+
+From the pairs plot, it seems that cylinders, horsepower, weight and acceleration seems to play a significant role in the prediction of the response variable. Although, there seems to some problem of multicollinearity existing between some of the predictors.
+
+
+Part (b) 
+
+
+```{r}
+library(bestglm)
+
+dat_2 = cbind(data_2_trai[,2:8],mpg01=data_2_train$mpg01)
+
+mod_2 = bestglm(dat_2,IC="AIC",family = binomial,method = "exhaustive")
+summary(mod_2$BestModel)
+
+par(mfrow=c(1,1))
+plot(mod_2$BestModel)
+```
+
+From the model summary, we can see that horsepower, weight and model year seem to be significant covariates in predicting the response mpg01.
+
+Also, from the plots, we can see that the residuals are non-normally distributed from the QQ-plot. The residual vs fitted shows that the residuals have heterogeneous variance and also seem to be independently distributed.
+
+Finding the confusion matrix for the train set, 
+
+```{r}
+predict_train <- ifelse(predict(mod_2$BestModel, newdata = data_2_train, type = "response") > 0.5, 1, 0)
+
+conf_mat_train <- table(mpg01, predict_train)
+conf_mat_train
+```
+
+
+Part (c) 
+
+
+```{r}
+mpg01_test = ifelse(data_2_test$V1 > median(data_2_train$V1), 1, 0)
+
+predict_test = ifelse(predict(mod_2$BestModel, newdata = data_2_test, type = "response") > 0.5, 1, 0)
+
+conf_mat_test = table(mpg01_test, predict_test)
+conf_mat_test
+
+sensitivity_test = conf_mat_test["0","0"]/(conf_mat_test["0","0"]+conf_mat_test["0","1"])
+```
+
+The sensitivity value of `r sensitivity_test` is quite decent for prediction purpose.
+
+```{r}
+library(pROC)
+library(ROCR)
+auc_val = auc(roc(mpg01_test,predict_test))
+auc_val
+
+par(mfrow=c(1,1))
+plot(performance(prediction(predict_test,mpg01_test),"tpr","fpr"),main="ROCR")
+```
+
+The high AUC value and the Receiver Operating Characteristics curve shows that the selected predictor variables would quite accurately predict the value of mpg01 using a generalized regression model. 
+
+
+
+PROBLEM 3. 
+
+```{r}
+data_3 = read.table("C:/Users/Jayaditya Nath/Documents/benthicfish.dat")
+
+X1 = ifelse(data_3$V2==1,1,0)
+X2 = ifelse(data_3$V2==2,1,0)
+X3 = ifelse(data_3$V2==3,1,0)
+
+data_3 = cbind(data_3,X1,X2,X3)
+```
+
+
+Part (a) 
+
+
+```{r}
+mod_3 = glm(data_3$V1 ~ matrix(c(X1,X2,X3),ncol = 3),data = data_3, family = poisson)
+summary(mod_3)
+anova(mod_3,test="Chisq")
+```
+
+We can see that macrohabitat type is statistically significant as the p-value from the ANOVA test is less than 0.05, thus having strong evidence against the null hypothesis. Also, the macrohabitat types 1,2 and 4 are statistically significant on the basis of the p-value obtained.
+
+```{r}
+over_disp_0_1 = mod_3$deviance/mod_3$df.residual
+over_disp_0_1
+```
+
+The value of the dispersion parameter = `r over_disp_0_1` is more than 1, thus indicating a problem of over-dispersion in the fit of the model to the given data.
+
+Part (b) 
+
+```{r}
+hist(data_3$V1, main = "Histogram of Fish Count", xlab = "Count", ylab = "Frequency",col="red")
+```
+
+I do not find anything astounding as it is clear from the histogram that the data is immensely over-dispersed, which completely is similar to the results obtained in part (a).
+
+
+Part (c) 
+
+```{r}
+library(pscl)
+
+# Fit zero-inflated Poisson model
+zero_inf_mod <- zeroinfl(V1 ~ as.factor(V2) | V3, data = data_3, dist = "poisson", link = "logit")
+summary(zero_inf_mod)
+```
+
+I get similar results for the zero inflated Poisson model as the macrohabitat types 1, 2 and 4 are still statistically significant, but, the predictors in the inflation part are not significant and thus we can conclude that the zero-inflated Poisson regression is not a good fit to predict the number of excess zeroes for the given count data.
+
