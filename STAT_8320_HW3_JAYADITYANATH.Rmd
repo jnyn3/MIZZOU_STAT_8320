@@ -1,0 +1,374 @@
+---
+title: ""
+author: ""
+date: ""
+output: pdf_document
+---
+
+
+
+Part (e) 
+
+
+Hierarchically modeling the marginal covariance as in model 2 allows for the incorporation of plot-specific random effects, capturing individual variability in growth patterns while also accommodating the overall variation in growth trajectories over time. This approach provides a more flexible and interpretable framework for modeling the complex covariance structure observed in longitudinal data. In contrast, directly modeling the marginal covariance matrix without hierarchical structuring may lack the ability to capture the inherent variability in growth patterns among different plots, potentially leading to oversimplified or inaccurate representations of the data. Hierarchical modeling allows for a more nuanced understanding of the underlying processes driving the observed covariance structure, thereby enhancing the robustness and interpretability of the statistical analysis.
+
+
+
+PROBLEM 3. 
+
+
+```{r,warning=FALSE,message=FALSE}
+library(dplyr)
+library(lmerTest)
+library(MCMCglmm)
+library(pbkrtest)
+library(RLRsim)
+library(agridat)
+library(latticeExtra)
+library(lme4)
+library(nlme)
+library(faraway)
+library(ez)
+library(ggplot2)
+library(easyanova)
+library(cowplot)
+
+# Load the data
+data(data8)
+
+```
+
+Part (a) 
+
+
+```{r}
+# Plot milk yield by block, with pasture and mineral factor levels
+library(ggplot2)
+ggplot(data8, aes(x = block, y = milk, shape = pasture,
+                       color = mineral)) + geom_point(size = 2)
+
+```
+
+
+Interpretation : The given plot helps to visualize any patterns or trends in milk yield across blocks and how they might be influenced by pasture and mineral factors. It mainly depicts the variability in milk yield across different blocks and also within a single block on the basis of different level combinations of minerals supplements and pasture treatments. 
+
+
+
+Part (b) 
+
+The model used for the given split-plot design is : 
+
+$Y_{ijk}=\mu+\rho_{i}+\alpha_{j}+(\rho\alpha)_{ij}+\beta_{k}+(\alpha\beta)_{jk}+\epsilon_{ijk}$, i = 1(|)3, j = 1(|)4 & k = 1(|)2, $\epsilon_{ijk}$~$N(0,\sigma^2)$
+
+where, $Y_{ijk}$ is the response corresponding to the ith block, jth pasture and kth mineral supplement
+
+$\mu$ is the overall mean.
+
+$\rho_{i}$ is the effect of the random blocking.
+
+$\alpha_{j}$ is the fixed effect of the ith pasture.
+
+$\beta_{k}$ is the fixed effect of the kth mineral supplement.
+
+$(\rho\alpha)_{ij}$ is the random interaction effect of the ith block and jth pasture.
+
+$(\alpha\beta)_{jk}$ is the interaction effect of the jth pasture and the kth mineral supplement.
+
+$\epsilon_{ijk}$ is the random subplot error.
+
+But, there is a problem with the given model that the random effects group the data and examine effects within those groupings. Within each block, each pasture is present only one time. So, there is no way to capture variation for block:pasture interactions because they are only observed once. Thus, we need to remove the $(\rho\alpha)_{ij}$ term from the model. Thus, the final model turns out to be : 
+
+$Y_{ijk}=\mu+\rho_{i}+\alpha_{j}+\beta_{k}+(\alpha\beta)_{jk}+\epsilon_{ijk}$, i = 1(|)3, j = 1(|)4 & k = 1(|)2, $\epsilon_{ijk}$~$N(0,\sigma^2)$
+
+
+```{r}
+mixed_model <- lmer(milk ~ pasture*mineral-1 + (1 | block), data = data8)
+summary(mixed_model)
+anova(mixed_model)
+exactRLRT(mixed_model)
+
+```
+
+Interpretation : From the ANOVA table, it is evident that the pasture is a highly significant covariate which can be used in studying the milk yield across different blocks, but, mineral supplements and the interaction between pastures and mineral supplements are not significant. Also from the lmer() summary, we can see that all four of the pasture treatments are also significant. Also from the random LR test, we reject the null hypothesis at 5% level of significance and conclude that the variance of the random block effect is greater than 0.
+
+
+
+
+Part (c) 
+
+The model used for the given split-plot design is : 
+
+$Y_{ijk}=\mu+\rho_{i}+\alpha_{j}+\beta_{k}+(\alpha\beta)_{jk}+\epsilon_{ijk}$, i = 1(|)3, j = 1(|)4 & k = 1(|)2, $\epsilon_{ijk}$~$N(0,\sigma^2)$
+
+where, $Y_{ijk}$ is the response corresponding to the ith block, jth pasture and kth mineral supplement
+
+$\mu$ is the overall mean.
+
+$\rho_{i}$ is the effect of the random blocking.
+
+$\alpha_{j}$ is the fixed effect of the ith pasture.
+
+$\beta_{k}$ is the fixed effect of the kth mineral supplement.
+
+$\epsilon_{ijk}$ is the random subplot error.
+
+
+```{r}
+mixed_model_no_inte <- lmer(milk ~ pasture+mineral-1 + (1 | block), data = data8)
+summary(mixed_model_no_inte)
+anova(mixed_model_no_inte)
+exactRLRT(mixed_model_no_inte)
+```
+
+Interpretation : From the ANOVA table, it is evident that the pasture is still a highly significant covariate which can be used in studying the milk yield across different blocks, but, mineral supplements is not significant. Also from the lmer() summary, we can see that all four of the pasture treatments are also significant. Also from the random LR test, we reject the null hypothesis at 5% level of significance and conclude that the variance of the random block effect is greater than 0.
+
+
+Part (d) 
+
+
+
+```{r}
+anova(mixed_model,mixed_model_no_inte)
+
+```
+
+Interpretation : Primarily, the AIC and BIC values from the ANOVA table show that the model with no interactions considered has both the values to be lower compared to the other model, which is indicative of the better fit to the data. Secondly, I feel that as we have seen previously that the interactions are not significant, it makes no sense in making the model more complicated. Lastly, I think that including interactions, when not needed also leads to difficulty in interpreting the coefficients of the model. 
+
+
+
+
+Part (e) 
+
+
+```{r}
+par(mfrow=c(1,1))
+qqnorm(residuals(mixed_model_no_inte))
+qqline(residuals(mixed_model_no_inte),col="red")
+plot(mixed_model_no_inte,xlab = "Fitted",ylab="Residuals",main="Residuals vs Fitted")
+plot(data8$pasture,fitted(mixed_model_no_inte),xlab="Pasture",ylab="Milk Yield")
+
+```
+
+
+Conclusion : From the normal Q-Q plot, it can be observed that the residuals are distributed normally, which makes the assumption of normality hold. 
+
+
+From the residual vs fitted plot, it can be observed that the points do not follow any specific pattern, which signifies that the linearity assumption is valid. The points bounce from the 0 line forming a band, indicating the homogeneous error variances. Also, there does not seem to be any significant outlier. 
+
+
+From the histograms of milk yield on the basis of pasture levels, it can be evidently concluded that the median milk yield changes when moving from one pasture level to another, signifying the significance of all the four pasture treatments. 
+
+
+
+Part (f) 
+
+
+
+```{r}
+ea2(data8,design = 5,plot = 1)
+
+```
+
+
+I find that using the *easyanova* package to perform the split-plot analysis is more informative compared to the previous approaches. The output consists of Analysis of Variance comparing the the different types of design, v.i.z, plot, split-plot, blocking, etc. and compare their significance on the basis of the p-value. Also, we get adjusted means of the response variable on the basis of different kinds of pastures, minerals and their interactions, which would help to signify which treatment or treatment combinations are significant. It also provides with different kinds of testing of hypothesis for checking the assumptions of the residuals along with the residuals and standardized residual values, which in turn helps vastly in residual analysis. The results also include different plots for the residuals, which helps to verify the assumptions regarding the residuals graphically.
+
+
+
+
+
+
+
+PROBLEM 4. 
+
+
+
+
+
+```{r}
+#Loading the data
+
+
+data_4 = read.table("C:/Users/Jayaditya Nath/Downloads/alzheim.dat", header=FALSE)
+colnames(data_4) <- c("group", "t1", "t2", "t3", "t4", "t5")
+data_4$group <- factor(data_4$group)
+data_4$subject <- 1:nrow(data_4)
+data_4 <- data_4[,c(7,1:6)]
+data_4$subject <- factor(data_4$subject)
+
+
+data_4 <- data.frame(
+  score = as.vector(unlist(data_4[,3:7])),
+  visit = c(rep(1, nrow(data_4)), rep(2, nrow(data_4)),
+            rep(3, nrow(data_4)), rep(4, nrow(data_4)), rep(5, nrow(data_4))),
+  group = rep(data_4$group, times = 5),
+  subject = rep(data_4$subject, times = 5))
+
+```
+
+
+Part (a) 
+
+
+```{r}
+# Plot profiles for each subject
+plot_obs = xyplot(score ~ visit | group,groups = group , data_4, as.table = TRUE, type = c("p","l", "smooth"))
+plot_obs
+
+
+# Plotting mean score for each group versus visit
+mean_scores <- aggregate(score ~ visit + group, data = data_4, FUN = mean)
+ggplot(data = mean_scores, aes(x = visit, y = score, group = group, color = group)) +
+  geom_line() +
+  geom_point() +
+  labs(x = "Visit", y = "Mean Score", color = "Group") +
+  ggtitle("Mean Score for Alzheimer's Patients by Group") +
+  theme_minimal()
+
+```
+
+Interpretation : From the plot, we can observe that the trend of the cognitive test score sees a decay with the number of visits for the 1st group receiving placebo, but, the opposite happens for the second group receiving lecithin as the trend in the cognitive score seems to experience a sharp rise, indicative of the fact that the patients are being able to remember more words compared to the placebo group. This in turn shows that the lecithin drug was indeed effective in slowing or even halting the memory impairment in Alzheimer's patients. 
+
+
+
+Part (b) 
+
+
+The model used for the given longitudinal study is : 
+
+$Y_{ijk}=\beta_{0}+\beta_{1}g_{i}+\beta_{2}v_{j}+b_{0k}+\epsilon_{ijk}$, i = 1(|)2, j = 1(|)5 & k = 1(|)47, $\epsilon_{ijk}$ ~ i.i.d $N(0,\sigma^2)$ and $b_{0k}$~$N(0,\sigma_{b}^2)$
+
+where, $Y_{ijk}$ is the response corresponding to the ith group, jth visit and kth subject
+
+$\beta_{0}$ is the fixed intercept. 
+
+$\beta_{1}$ is the fixed effect coefficient due to the ith group. 
+
+$\beta_{2}$ is the fixed effect coefficient due to the jth visit. 
+
+$g_{i}$ denotes the ith group.
+
+$v_{j}$ denotes the jth visit.
+
+$b_{0k}$ is the random intercept due to the kth subject 
+
+$\epsilon_{ijk}$ is the random error.
+
+
+
+Part (c) 
+
+
+The implied covariance structure of repeated visits on the kth subject of the ith group is : 
+
+
+$\Sigma_{k}$ = $\left(\begin{array}{cccccc}\sigma_{b}^{2}+\sigma^{2} & \sigma^{2} & . & . & . &\sigma^{2}\\\sigma^{2} & \sigma_{b}^{2}+\sigma^{2} & . & . & . & \sigma^{2}\\. & . & . & . & . & .\\. & . & . & . & . & .\\. & . & . & . & . & .\\\sigma^{2} & \sigma^{2} & . & . & . & \sigma_{b}^{2}+\sigma^{2}\end{array}\right)$
+
+
+
+Part (d) 
+
+
+
+```{r}
+model_4 = lmer(score ~ visit + group - 1 + (1|subject),data = data_4,REML = F)
+
+summary(model_4)
+
+```
+
+Here, we fit the linear mixed model using the Maximum Likelihood approach. We observe that the fixed effect coefficients are significant. Also, $\hat{\sigma}^{2}$ = 8.246 and $\hat{\sigma_{b}}^{2}$ = 15.128. 
+
+
+
+Part (e) 
+
+
+The model used for the given longitudinal study is :
+
+
+$Y_{ijk}=\beta_{0}+\beta_{1}g_{i}+(\beta_{2}+b_{1k})v_{j}+b_{0k}+\epsilon_{ijk}$, i = 1(|)2, j = 1(|)5 & k = 1(|)47, $\epsilon_{ijk}$ ~ i.i.d $N(0,\sigma^2)$ and $b_{0k}$~$N(0,\sigma_{b}^2)$
+
+where, $Y_{ijk}$ is the response corresponding to the ith group, jth visit and kth subject
+
+$\beta_{0}$ is the fixed intercept. 
+
+$\beta_{1}$ is the fixed effect coefficient due to the ith group. 
+
+$\beta_{2}$ is the fixed effect coefficient due to the jth visit. 
+
+$g_{i}$ denotes the ith group.
+
+$v_{j}$ denotes the jth visit.
+
+$b_{0k}$ is the random intercept due to the kth subject 
+
+$b_{1k}$ is the random coefficient due to the jth visit 
+
+$\epsilon_{ijk}$ is the random error.
+
+
+
+Part (f) 
+
+
+```{r}
+model_4_e = lmer(score ~ group - 1 + (1 + visit|subject),data = data_4,REML = F)
+summary(model_4_e)
+
+```
+
+Interpretation : For the given model, the fixed effect(i.e, group) seems to be statistically significant. So, we can finally conclude that the cognitive test score for the subjects receiving Lecithin drug should have a higher cognitive test score compared to the ones in the Placebo group.
+
+
+
+Part (g) 
+
+
+
+```{r}
+anova(model_4,model_4_e)
+
+```
+
+Interpretation : As the p-value is less than the significance level of $\alpha=0.05$, we reject the null hypothesis at 5% level of significance and can thus conclude that the model with the random intercept and random coefficient for visit is a better fit compared to the model with the random intercept only. The AIC values from the ANOVA table also comply with our conclusion. 
+
+
+
+Part (h) 
+
+
+```{r} 
+# Plot profiles for each subject
+plot_rand_int = xyplot(fitted(model_4) ~ visit | group,groups = group , data_4, as.table = TRUE, type = c("p", "l", "smooth"))
+
+# Plot profiles for each subject
+plot_mod_final = xyplot(fitted(model_4_e) ~ visit | group,groups = group , data_4, as.table = TRUE, type = c("p", "l", "smooth"))
+
+plot_obs
+plot_rand_int
+plot_mod_final
+
+```
+
+Interpretation : From the comparison of the graphs, we can observe that the random intercept model displays similar profiles for the subjects of both the groups, which we know is not the case from the observed data. On the other hand, adding a random effect to the *visit* variable shows that the model fits the data quite well as there is an increasing trend in the cognitive score for the group receiving Lecithin compared to the one receiving Placebo.
+
+
+
+
+Part (i) 
+
+
+```{r} 
+model_4_AR1 <- lme(score ~ visit + group, random = ~1|subject, correlation = corAR1(form = ~1|subject), data = data_4, method = "ML")
+summary(model_4_AR1)
+
+
+model_4_unstruc <- lme(score ~ visit + group, random = ~1|subject, correlation = corSymm(form = ~1|subject), data = data_4, method = "ML")
+summary(model_4_unstruc)
+
+```
+
+
+Interpretation : The lower AIC value for the unstructured covariance model has a better predictive ability due to the lower AIC value compared to the model having AR(1) covariance structure.
+
+
