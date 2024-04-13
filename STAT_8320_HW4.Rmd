@@ -1,0 +1,389 @@
+---
+title: 
+author: 
+date: 
+output: pdf_document
+---
+
+Problem 2. 
+
+
+Part (b) 
+
+This derivation of the negative binomial distribution is surely relevant to the notion of over-dispersed count data. Over-dispersion occurs when the variance of the count data is greater than what is expected under a Poisson distribution. This can happen due to unobserved heterogeneity, extra-Poisson variation, or clustering effects.
+
+In this context, the Gamma distribution serves as a way to model the variability in the rate parameter $\lambda$ among the different observations. By incorporating a Gamma prior for $\lambda$, we allow for this variability, which can capture over-dispersion in the data. The resulting negative binomial distribution for $y_{i}$ accounts for both the Poisson variability in the counts and the additional variability in $\lambda$due to the random effect. Therefore, this derivation provides a probabilistic framework for modeling over-dispersed count data by explicitly considering the random variation in the rate parameter.
+
+
+
+Part (c) 
+
+
+If we assume that $\lambda$ follows a log-normal distribution instead of a Gamma distribution, the resulting marginal distribution of $y_{i}$ would not still be a negative binomial distribution. Instead, it would probably be a Poisson-log-normal distribution.The Poisson-log-normal distribution arises when a Poisson-distributed random variable is multiplied by a log-normally distributed random variable.
+ 
+  I feel that this observation is relevant to how we perform estimation in Generalized Linear Mixed Models (GLMMs) because it highlights the importance of appropriately modeling the distribution of random effects. GLMMs allow for the incorporation of random effects to account for correlation or heterogeneity in the data, and the choice of distribution for these random effects can impact the model's performance and interpretation.
+  
+
+
+
+PROBLEM 3. 
+
+
+```{r}
+#Load the data and reshape
+data_3 = read.table("C:/Users/Jayaditya Nath/Documents/growthdata.dat")
+
+data_3 = reshape(data_3, varying = list(2:7),
+                  v.names = "Growth",
+                  timevar = "Plant",
+                  times = 1:6,
+                  direction = "long")
+# Converting 'Time' column to numeric
+data_3$Time = as.numeric(as.character(data_3$V1))
+data_3 = data_3[,2:5]
+
+```
+
+
+To find the initial parameter estimates, I assume that there is no random effects in the model, which in turn gives a non-linear model. Now, I try to find maximum likelihood estimates(MLE) and set them as the starting values to fit the given model. To do this, I minimize the negative log-likelihood of the given model using the *optim()* with the BFGS quasi-Newton algorithm. 
+
+
+
+```{r}
+#Finding initial parameter values
+neg_ll = function(parameters, response, time) {
+  beta_1 = parameters[1]
+  beta_2 = parameters[2]
+  beta_3 = parameters[3]
+  
+  # Calculate the predicted values using the given function
+  fit = beta_1 / (1 + exp(- (time - beta_2) / beta_3))
+  
+  # Calculate the negative log-likelihood
+  neg_log_likelihood = sum(dnorm(response, mean = fit,log = TRUE))
+  
+  return(-neg_log_likelihood)
+}
+
+# Initial values for optimization
+initial_params = c(200,700,1200)
+
+# Optimize the negative log-likelihood function
+optimized = optim(initial_params, neg_ll, time = data_3$Time, response = data_3$Growth,method = "BFGS")
+
+# Extract the MLE estimates
+params_init = optimized$par
+
+```
+
+Finally, I get the initial parameter estimates for $\beta_1$,$\beta_2$ and $\beta_3$ as `r params_init[1]`, `r params_init[2]` and `r params_init[3]`.
+
+
+```{r,warning=FALSE,message=FALSE}
+library(nlme)
+
+#Fitting the model
+growth_model = nlme::nlme(Growth ~ (b1 + u) / (1 + exp(-(Time - b2) / b3)),
+               data = data_3,
+               fixed = b1 + b2 + b3 ~ 1,
+               random = list(u ~ 1),
+               groups = ~ Plant,
+               start = list(fixed = c(b1 = params_init[1], b2 = params_init[2], b3 = params_init[3])),
+               control=nlme::nlmeControl(pnlsTol=0.1))
+
+summary(growth_model)
+
+#Testing for the presence of random effect
+growth_model_rand_comp <- nlme(Growth ~ (b1) / (1 + exp(-(Time - b2) / b3)),
+                    data = data_3,
+                    fixed = b1 + b2 + b3 ~ 1,
+                    groups = ~ Plant,
+                    start = list(fixed = c(b1 = params_init[1], b2 = params_init[2], b3 = params_init[3])),
+                    control=nlmeControl(pnlsTol=0.1))
+
+lmtest::lrtest(growth_model,growth_model_rand_comp)
+
+```
+
+From the ANOVA table, I see that the p-value is greater than $\alpha = 0.05$, thus not allowing to reject the null hypothesis at 5% level of significance. So, I can conclude that the adding the random effects to the given model does not necessarily improve the model fit.
+
+
+```{r}
+#Testing for beta_3 = 350
+growth_model_beta3_comp = nlme(Growth ~ (b1 + u) / (1 + exp(-(Time - b2) / 350)),
+                          data = data_3,
+                          fixed = b1 + b2 ~ 1,
+                          random = list(u ~ 1),
+                          groups = ~ Plant,
+                          start = list(fixed = c(b1 = params_init[1], b2 = params_init[2])),control = nlmeControl(pnlsTol = 0.1))
+
+
+anova(growth_model, growth_model_beta3_comp)
+
+```
+
+
+From the ANOVA table, I see that the p-value is less than $\alpha = 0.05$, thus allowing to reject the null hypothesis at 5% level of significance. So, I can conclude that the $\beta_3 = 350$ is not its true value.
+
+
+
+```{r,warning=FALSE,message=FALSE}
+#Plotting predicted values(on the basis of the model without random effects) and observed growth
+library(ggplot2)
+
+ggplot(data_3, aes(x = Time, y = Growth)) +
+  geom_point(size = 0.5) +
+  geom_line(aes(y =predict(growth_model_rand_comp,newdata = data_3)), color = "blue") +
+  facet_wrap(vars(Plant)) +
+  labs(title = "Observed and Predicted Growth for Each Plant",
+       x = "Time",
+       y = "Growth")+
+  theme_minimal()
+
+```
+
+
+From the plots, it can be observed that the model without the random effects provides quite a decent fit. 
+
+
+
+
+PROBLEM 4. 
+
+
+
+```{r,warning=FALSE,message=FALSE} 
+# Load necessary libraries
+library(lme4)
+library(RLRsim)
+# Load the data
+pred_data <- readRDS("C:/Users/Jayaditya Nath/Documents/pred_data.RDS")
+
+```
+
+
+For the given question, we are interested in knowing whether the rate of predation varies among different groups of animals, i.e, the treatment effect is significant or not. For this, we consider the following mixed effects regression model : 
+
+$Y_{ij}\sim$ Bernoulli($p_{ij}$)
+
+Let $Y_{ij}$ denote the response variable indicating predation for the 
+i-th observation in the j-th block, where , i = 1,2,....,$n_j$ and j = 1,2,....,10 and $n_j$ represents the number of observations in the j-th block. 
+
+Now,let $Y_{ij}\sim$ Bernoulli($p_{ij}$)
+
+logit($p_{ij}$) = $\beta_0$ + $\alpha_i$ + $\tau_j$
+
+where $p_{ij}$ s the rate of predation for the i-th observation in the j-th block.
+
+logit($p_{ij}$) = log-odds of predation
+
+$\beta_0$ = fixed intercept
+
+$\alpha_i$ = represents the fixed effect of the group variable for the i-th observation.
+
+$\tau_j$ = represents the random effect of the j-th block.
+
+$\tau_j \sim$ Normal(0,$\sigma^2_\tau$)
+
+
+
+```{r,warning=FALSE,message=FALSE}
+# Fit the mixed-effects model
+model_4 <- glmer(pred ~ treat + (1 | blk), data = pred_data,family = binomial(link = "logit"))
+
+# Check model summary
+summary(model_4)
+
+#Checking the significance of the random effects
+model_4_rand = glmer(pred ~ treat + (1 | blk), data = pred_data)
+exactRLRT(model_4_rand)
+
+```
+
+
+From the model summary, the group effect for the animals seem to be significant as a whole. Also, the treatments : shrimp, crab and both are significant compared to the baseline treatment effect(i.e, no treatment). 
+
+It seems from the output of the random Likelihood Ratio Test that the p-value is less than $\alpha = 0.05$, thus, we can reject the null hypothesis at 5% level of significance. So, the random effect has a significant variance different from 0. 
+
+
+
+PROBLEM 5. 
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+library(ggplot2)
+library(glmnet)
+library(lme4)
+library(RLRsim)
+library(pscl)
+library(glmmTMB)
+# Load data
+data_5 <- read.table("C:\\Users\\Jayaditya Nath\\Downloads\\ssttornado532001vec.dat")
+colnames(data_5) <- c("case", "time", "latitude", "longitude", "tornado_count", "sst_value")
+
+```
+
+
+Introduction : The motivation of this problem is to study the relation between a set of covariates(sea surface temperature,latitude-longitude and time) and the occurence of tornadoes. We are interested to study that if there is a dependence between yearly tornado counts in the central portion of Missouri to the tropical Pacific SST. 
+
+
+## Exploratory data analysis 
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#Check multicollinearity
+pairs(data_5[,c(-1,-5)])
+
+```
+
+There does not seem to be any multicollinearity present among the covariates. 
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+# Histogram of tornado counts
+library(ggplot2)
+ggplot(data_5, aes(x = tornado_count)) +
+  geom_histogram(binwidth = 1, fill = "red", color = "black") +
+  labs(x = "Tornado Count", y = "Frequency", title = "Yearly Tornado Counts in Missouri")+
+  theme_minimal()
+
+```
+
+The above plot shows that the responses are heavily right-skewed with an excessive number of zeroes, hinting at the usage of a zero-inflated count data model. 
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE}
+#Scatter plot of tornado counts vs. SST values
+p_1 = ggplot(data_5, aes(x = sst_value, y = tornado_count)) +
+     geom_point() +
+     labs(x = "SST Value", y = "Tornado Count", title = "Tornado Counts vs. SST Values")+
+     theme_minimal()
+
+#Scatter plot of tornado counts vs. time
+p_2 = ggplot(data_5, aes(x = sst_value, y = time)) +
+  geom_line() +
+  labs(x = "SST Value", y = "Tornado Count", title = "Tornado Counts vs. Time")+
+  theme_minimal()
+
+
+gridExtra::grid.arrange(p_1,p_2)
+
+# Create plots for each grid location
+library(ggpubr)
+
+plots <- lapply(1:20, function(i) {
+  subset_data <- subset(data_5, case == i)
+  ggplot(subset_data, aes(x = time, y = tornado_count)) +
+    geom_line() +
+    labs(x = "Year", y = "Tornado Count", title = paste("Grid Location", i))
+})
+
+# Arrange plots in a vertical layout
+ggarrange(plotlist = plots,nrow=5, ncol =4 )
+
+```
+
+The plots are showing that there is no specific pattern in which the covariates individually influence the response variable. So, a linear model or a quadratic model can not be specified. 
+
+
+## Discussions on models considered
+
+On the basis of the exploratory data analysis performed, I would be using the generalized linear mixed model. Since tornado counts are non-negative integers and potentially over-dispersed, I have used a Poisson likelihood along with the log link function, which ensures that the fitted values are non-negative. For this, we have to assume that the counts of tornado occurrences in central Missouri in different years are conditionally independent given the SST values. Also, the Poisson distribution belongs to an Exponential family, which is a requirement for Generalized Linear Models. 
+
+  I have considered the SST as fixed effects and considering case and time as random effects would be reasonable in some sense as repeatedly many observations have been recorded over time for each of the cases. 
+  
+  Initially, I have considered only fixed effects and compared them to a model having random effects and after performing ANOVA, observed that the random effects are significant. I have added a random intercept to time, a random slope to SST for each case and a random intercept to the interaction between time and case. I have used __Likelihood Ratio Test__ to find that the interaction effect between time and case is also significant.
+  
+  To check for over-dispersion, I plotted out the standardized quantile residuals using the *DHARMa* module and observed that the issue of over-dispersion persists. To deal with this, I have finally fitted a negative-binomial(log link) generalized linear regression mixed effects model with the same formula, considering the zero-inflated data structure also. 
+  
+  The model looks like : 
+  
+Let $Y_{ijk}$ represent the tornado count corresponding to the $\text{SST}_i$ at case j time point k.
+
+So, $Y_{ij}|p_{ij} \sim NB(r,p_{ijk})$, where, r is the dispersion parameter and $p_{ijk}$ is the probability of observing $Y_{ijk}$ tornadoes. 
+
+Again, $logit(p_{ijk}) = \beta_{0} + \beta_{1}SST_{i} + b_{0} + b_{1}SST_{i}+b_{2}$,
+
+where, $\beta_{0}$ and $\beta_{1}$ are the fixed effects coefficients for the intercept and SST value, respectively.
+
+$b_0,b_1$ and $b_2$ are the random effects for the intercept due to time, SST value due to case and intercept due interaction of time and case, respectively, where, $b_0,b_1$ and $b_2$ $\sim iid N(0,\sigma_{\tau}^2)$.
+
+$SST_{i}$ is the is ith the sea surface temperature. 
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results=FALSE,fig.show='hide'}
+library(DHARMa)
+
+
+
+
+#glmm time,sst_value fixed, latitute, longitude random
+mod_5_fixed = glm(tornado_count~sst_value,data = data_5,family = poisson)
+
+mod_5_primary_p_inte <- glmer(tornado_count ~ sst_value + (1|time) + (sst_value-1|case) + (1|case:time), 
+                  data = data_5,family = poisson)
+summary(mod_5_primary_p_inte)
+mod_5_primary_p_no_inte <- glmer(tornado_count ~ sst_value + (1|time) + (sst_value-1|case), 
+                              data = data_5,family = poisson)
+summary(mod_5_primary_p_no_inte)
+
+#Checking for interaction
+lmtest::lrtest(mod_5_primary_p_inte,mod_5_primary_p_no_inte)
+
+#Checking for fixed/random
+anova(mod_5_primary_p_inte,mod_5_fixed)
+
+
+#Checking for overdispersion 
+plot(simulateResiduals(mod_5_primary_p_inte))
+
+
+
+#Overdispersed, so neg-bin 
+library(glmmTMB)
+
+final_mod_negbin = glmmTMB(tornado_count ~ sst_value + (1 | time) + (sst_value-1| case)
+        ,ziformula=~1,family=nbinom2(link = "log"),data=data_5)
+summary(final_mod_negbin)
+
+```
+
+
+
+## Model fit 
+
+```{r,echo=FALSE}
+plot(simulateResiduals(final_mod_negbin))
+
+```
+
+
+From the normal Q-Q plot, it is clear that the normality assumptions are met reasonably. The residual vs fitted plots show that there is no specific pattern in the points, which signifies the presence of linearity. Also, the points are spread optimally around the center line, signifying homoscedasticity of error variances. The plots previously have shown that the responses and thus the residuals are in no way autocorrelated. The final model also has the lowest AIC value among all other models which I have checked, thus, giving the best fit to the given data. 
+
+
+
+## Inference 
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results=FALSE}
+mse = (sum(data_5$tornado_count- fitted(final_mod_negbin))^2)/dim(data_5)[1]
+
+```
+
+
+A very low MSE value of `r mse` signifies that the SST value can be used to predict the number of tornadoes occuring at a specific place at a specific time. 
+
+
+```{r,echo=FALSE,warning=FALSE,message=FALSE,results=FALSE} 
+#Deviance test 
+null_final_mod_negbin = glm(tornado_count~1,data=data_5,family = poisson)
+dev = deviance(final_mod_negbin)
+null_dev = deviance(null_final_mod_negbin)
+p_value = 1 - pchisq(null_dev-dev,df=1)
+
+```
+
+A p-value of `r p_value` indicates that we reject the null hypothesis at 5% level of significance. So, we can conclude that the final model fits the data well.
+
+
+## Conclusion 
+
+The overall analysis shows that SST values can be considered as reasonable covariate to find out tornado counts in mid-Missouri in the presence of a few other random components as there seems to quite high dependence among them. I did not come across any limitations while performing data analysis on the specific dataset with the given methods and found the data sufficient.
+
+
