@@ -1,0 +1,151 @@
+---
+output: pdf_document
+---
+
+
+PROBLEM 4. 
+
+
+Part (a) 
+
+```{r,warning=FALSE,message=FALSE}
+library(ggplot2)
+library(nlme)
+library(dplyr)
+library(reshape2)
+library(profileR)
+data_4 = read.table("C:/Users/Jayaditya Nath/Documents/PothoffRoy1964.dat")
+
+mean_profiles_4 = aggregate(. ~ data_4$V2, data = data_4[, -c(1, 2)], FUN = mean)
+
+# Plot mean profiles
+plot(seq(8,14,2), mean_profiles_4[1, -1], type = 'l', col = 1, ylim = c(min(mean_profiles_4[-1]), max(mean_profiles_4[-1])), xlab = "Age", ylab = "Mean Measurement", main = "Mean Profiles for different ages")
+lines(seq(8,14,2), mean_profiles_4[2, -1], col = 2)
+legend("bottomright", legend = c("F","M"), col = 1:2, lty = 1,cex = 0.5)
+
+```
+
+From the profile plots, it is clearly visible that there is a difference between the dental measurements of males and females across different ages. The profiles are not at all similar to each other and males tend to have greater dental measurements compared to females at different ages. 
+
+
+Part (b) 
+
+
+```{r}
+# Performing MANOVA 
+anova(lm(cbind(V3,V4,V5,V6)~V2,data = data_4))
+
+```
+
+Here, we are interested in testing : 
+
+$H_0:\boldsymbol{C(\mu_{males}-\mu_{females})=\tilde{0}}$ vs $H_a:$ not $H_0$
+
+The Pillai's test statistic for performing MANOVA is : 
+
+$$V = \sum_{i=1}^{p} \frac{\lambda_i}{1 + \lambda_i}$$, where $\lambda_i$ is the number of non-zero eigen values of the product of the inverse of the within-group variance-covariance matrix with the between-group variance-covariance matrix. 
+
+The p-value for the associated test is 0.02. 
+
+Thus, we are able to reject the null hypothesis at 5% level of significance and conclude that the dental measurements of femlaes and males vary across time. 
+
+
+Part (c) 
+
+
+```{r}
+# Melt the data from wide to long format
+names(data_4) = c("ID", "Gender", "age_8", "age_10", "age_12", "age_14")
+data_4_long = reshape(data_4,varying = list(c("age_8", "age_10", "age_12", "age_14")),v.names = "Measurement",timevar = "Age",times = c(8, 10, 12, 14),direction = "long")
+
+# Fit a linear mixed model with compound symmetry covariance structure
+lmm_results = lme(fixed = Measurement ~ Gender*Age,
+                   random = ~ 1 | ID, 
+                   data = data_4_long, 
+                   correlation = corCompSymm(form = ~ 1 | ID))
+summary(lmm_results)
+
+```
+
+
+From the linear mixed model with compound symmetry variance-covariance structure, we can see that the main effect __Gender__ is not significant, though __Age__ seems to be quite significant. The interaction term is also significant in the model. I feel that somehow the MANOVA and the LMM model results are at agreement with each other in terms of the fact that the interaction between age and gender is significant, however, they disagree on the fact that __Gender__ itself is significant or not. 
+
+
+
+PROBLEM 5. 
+
+
+
+```{r}
+# Define the data
+data_5 = data.frame(
+  Reinforcement_Schedule = rep(1:3, each = 5),
+  Rat = rep(1:5, times = 3),  Cond_1 = c(29, 24, 31, 41, 30, 25, 20, 35, 35, 26, 10, 9, 7, 8, 11),
+  Cond_2 = c(20, 15, 19, 11, 20, 17, 12, 16, 8, 18, 18, 10, 18, 19, 20),
+  Cond_3 = c(21, 10, 10, 15, 27, 19, 8, 9, 14, 18, 16, 18, 19, 20, 17),
+  Cond_4 = c(18, 8, 31, 42, 53, 17, 8, 28, 40, 51, 14, 11, 12, 5, 6))
+
+
+# Calculate mean time for each condition within each reinforcement schedule
+mean_profiles = aggregate(. ~ data_5$Reinforcement_Schedule, data = data_5[, -c(1, 2)], FUN = mean)
+
+# Plot mean profiles
+plot(1:4, mean_profiles[1, -1], type = 'l', col = 1, ylim = c(0, max(mean_profiles[-1])), xlab = "Condition", ylab = "Mean Time (seconds)", main = "Mean Profiles for Reinforcement Schedules")
+lines(1:4, mean_profiles[2, -1], col = 2)
+lines(1:4, mean_profiles[3, -1], col = 3)
+legend("bottomright", legend = c("Sc 1", "Sc 2", "Sc 3"), col = 1:3, lty = 1,cex = 0.5)
+
+```
+
+
+From the profiles plot, it seems that the reinforcement schedules 1,2 and 3 vary vastly among themselves across different conditions although there might be some visible similarity among the schedules 1 and 2 over different conditions. 
+
+
+
+Part (b) 
+
+
+```{r}
+# Reshape data into long format
+data_5_long = reshape(data_5,varying = list(c("Cond_1","Cond_2","Cond_3","Cond_4")),v.names = "Time",timevar = "Condition",times = c(1,2,3,4),direction = "long")
+
+# Perform one-way ANOVA
+anova_res_5 = aov(formula = Time ~ Reinforcement_Schedule + Condition, data = data_5_long)
+summary(anova_res_5)
+
+```
+
+
+By performing an Analysis of Variance, we can infer that the reinforcement schedule has a significant overall effect. The associated p-value is approximately 0.0021. 
+
+
+Part (c) 
+
+
+```{r}
+# Perform profile analysis comparing schedules 1 and 2 across conditions
+mod_5_12 = pbg(data = as.matrix(subset(data_5[,3:6],data_5$Reinforcement_Schedule%in%c(1,2))),group = as.matrix(subset(data_5[,"Reinforcement_Schedule"],data_5$Reinforcement_Schedule%in%c(1,2))),original.names = T)
+summary(mod_5_12)
+
+```
+
+
+On the basis of profile analysis, we can conclude at 5% level of significance on the basis of p-value that the schedules 1 and 2 behave similarly across different conditions and evidently they are parallel to each other. 
+
+
+```{r}
+# Perform profile analysis comparing schedules 1,2 with 3 across conditions
+data_5_grouped = data_5 %>% mutate(Reinforcement_Schedule= case_when(Reinforcement_Schedule==1~1.2,
+                                                                     Reinforcement_Schedule==2~1.2,
+                                                                     Reinforcement_Schedule==3~3))
+
+mod_512_3 = pbg(data = as.matrix(data_5_grouped[,3:6]),group = as.matrix(data_5_grouped$Reinforcement_Schedule),original.names = T)
+summary(mod_512_3)
+
+```
+
+After grouping the schedules 1 and 2 and comparing with the schedule 3, it is evident at 5% level of significance that the profiles for the combined groups behave significantly different from the profile of the third schedule and thus are not parallel to each other. 
+
+
+
+
