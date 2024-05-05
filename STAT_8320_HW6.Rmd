@@ -1,0 +1,635 @@
+---
+title: "STAT_8320_HW6"
+author: "JAYADITYA NATH"
+date: "2024-05-04"
+output: pdf_document
+---
+
+
+```{r,warning=FALSE,message=FALSE} 
+# Loading the required libraries 
+
+library(MASS)
+library(class)
+library(klaR)
+library(CovTools)
+library(MVN)
+library(ggplot2) 
+library(psych)
+library(dplyr)
+
+```
+
+
+PROBLEM 1. 
+
+
+
+Considering the matrix : 
+
+$$X = \left[\begin{array}{ccc}
+7 & 4 & 3 \\
+4 & 1 & 7 \\
+6 & 3 & 5 \\
+7 & 6 & 1 \\
+8 & 5 & 6 \\
+7 & 3 & 9 \\
+5 & 3 & 3 \\
+9 & 2 & 8 \\
+7 & 4 & 5 \\
+8 & 2 & 2 \\
+\end{array}\right]$$
+
+
+Part (a) 
+
+
+```{r,echo=FALSE}
+data_1 = matrix(c(7, 4, 3,
+                 4, 1, 7,
+                 6, 3, 5,
+                 7, 6, 1,
+                 8, 5, 6,
+                 7, 3, 9,
+                 5, 3, 3,
+                 9, 2, 8,
+                 7, 4, 5,
+                 8, 2, 2), 
+               ncol = 3, byrow = TRUE)
+
+print(paste0("The sample covariance matrix is : ")) 
+cov(data_1)
+
+```
+
+
+Part (b) 
+
+
+```{r,echo=FALSE}
+total_variance = sum(apply(data_1, 2, var))
+print(paste0("The total variance is : ",total_variance)) 
+
+```
+
+
+Part (c) 
+
+
+```{r,echo=FALSE}
+# Calculate eigen values and eigen vectors
+eigen_result = eigen(cov(data_1))
+
+# Extract eigen values
+lambda = eigen_result$values
+
+# Extract eigen vectors
+A = eigen_result$vectors
+
+# Reorder eigen values and eigen vectors
+order = order(lambda, decreasing = TRUE)
+lambda = lambda[order]
+A = A[, order]
+
+print("The eigen values are : ")
+print(diag(lambda))
+print("The eigen vectors are : ")
+print(A) 
+
+``` 
+
+
+
+Part (d) 
+
+
+```{r,echo=FALSE} 
+print(paste0("The proportion of variation accounted for by the first principal component is : ", lambda[1] / sum(lambda))) 
+
+```
+
+
+
+Part (e) 
+
+
+```{r,echo=FALSE}
+print(paste0("The cumulative variation accounted for by the first two principal components is : ", (lambda[1] + lambda[2]) / sum(lambda))) 
+
+```
+
+
+Part (f) 
+
+
+```{r,echo=FALSE}
+print(paste0("The first principal component is : " )) 
+print(data_1 %*% A[, 1])
+
+print(paste0("The second principal component is : " )) 
+print(data_1 %*% A[, 2]) 
+
+
+```
+
+
+
+Part (g) 
+
+
+```{r,echo=FALSE}
+# Calculate the loading coefficients for the first two principal components
+loading_coefficients = matrix(NA, nrow = nrow(A), ncol = ncol(A)-1) 
+
+# Loop through each principal component (column of A)
+for (j in 1:ncol(A)-1) {
+  loading_coefficients[, j] = sqrt(lambda[j]/total_variance) * A[, j] 
+}
+
+# Print the loading coefficients
+print("Loading Coefficients for PC1 and PC2:")
+print(loading_coefficients) 
+
+```
+
+For the first two variables, it seems that both of them load moderately on the second factor, but, for the first factor the results are completely contrasted. 
+
+For the third variable, there seems to be a strong to moderate loading when a transition is made from the first factor to the second one. 
+
+
+
+Part (h) 
+
+
+```{r,echo=FALSE}
+plot(data_1 %*% A[, 1], data_1 %*% A[, 2], xlab = "PC1", ylab = "PC2", main = "Scatter Plot of PC1 vs PC2")
+
+```
+
+
+Comment : It does not seem that any of the principal components seem to affect any of the three traits strongly.
+
+
+
+Part (i) 
+
+
+```{r,echo=FALSE}
+cor(data_1)
+
+```
+
+
+
+Part (j) 
+
+
+```{r,echo=FALSE}
+# Calculate eigen values and eigen vectors
+eigen_result_cor = eigen(cor(data_1))
+
+# Extract eigen values
+lambda_cor = eigen_result_cor$values
+
+# Extract eigen vectors
+A_cor = eigen_result_cor$vectors
+
+# Reorder eigen values and eigen vectors
+order_cor = order(lambda_cor, decreasing = TRUE)
+lambda_cor = lambda_cor[order_cor]
+A_cor = A_cor[, order_cor]
+
+print("The eigen values are : ")
+print(diag(lambda_cor))
+print("The eigen vectors are : ")
+print(A_cor) 
+
+print(paste0("The proportion of variation accounted for by the first principal component is : ", lambda_cor[1] / sum(lambda_cor))) 
+
+print(paste0("The proportion of variation accounted for by the second principal component is : ", lambda_cor[2] / sum(lambda_cor))) 
+
+```
+
+
+
+PROBLEM 2. 
+
+
+```{r}
+# Loading the data
+data_2 = read.table("C:/Users/Jayaditya Nath/Documents/decathlon.dat")
+data_2[, c(1, 5, 6, 10)] = -data_2[, c(1, 5, 6, 10)]
+data_2_cov = data_2[, -11] 
+
+```
+
+
+Part (a) 
+
+
+As Principal Component Analysis is not invariant to change in scale of the variables and here, we are rescaling some of the variables, it makes sense to use the correlation matrix for better interpretability. 
+
+
+Part (b) 
+
+
+```{r}
+pca_mod = prcomp(data_2_cov,scale. = T)
+
+summary(pca_mod)
+
+```
+
+It seems that the first PC accounts for 50% of the variability and the second one accounts for 21% of the variability. 
+
+
+Part (c) 
+
+
+Yes, I would definitely use the first 2 PC's in the analysis because most of the variation(roughly 70%) in the data is explained by the two of these components. 
+
+
+Part (d) 
+
+```{r}
+pca_mod$rotation[,1:2]
+
+```
+
+From the loadings of the first PC, it seems to influence each variable almost similarly and thus can be interpreted as a measure of the total overall score of an athlete. However, the loadings of the second PC seem to be contrasted for several variables such as 100 m race, long jump, etc. with variables such as discus, shot put, etc. and thus there is no clear interpretation for this component. 
+
+
+Part (e) 
+
+
+```{r}
+# Extract PC scores
+biplot(pca_mod,main="PC1 vs PC2 with Athlete Ranks")
+
+```
+We can observe from the plot that most of the variables have been combined and transformed into PC1(X-axis of the plot) with the highest values of ranks of the athletes towards the lowest values of PC1 and the converse is also true.
+
+
+Part (f) 
+
+
+```{r}
+# Extract PC scores
+pc_scores = pca_mod$x
+
+# Create a dataframe with PC scores and athlete ranks
+pc_data = data.frame(PC1 = pc_scores[,1], PC2 = pc_scores[,2], Rank = rank(data_2$V11))
+
+# Correlate the first PC score with the overall decathlon point score
+cor_pc1 = cor(pc_data$PC1, data_2$V11)
+
+# Correlate the second PC score with the overall decathlon point score
+cor_pc2 = cor(pc_data$PC2, data_2$V11)
+
+# Print correlation results
+print(paste("Correlation between PC1 and overall decathlon point score:", cor_pc1))
+print(paste("Correlation between PC2 and overall decathlon point score:", cor_pc2)) 
+
+```
+
+The correlation coefficient between the first and second principal components and the overall decathlon point scores indicates the strength and direction of the linear relationship between them. A positive correlation suggests that higher values of PC1 and PC2 are associated with higher decathlon point scores, while a negative correlation suggests the opposite. The results here suggest that the PC1 can be considered as a measure of the overall decathlon score, where as the interpretation of PC2 as a measure of the overall score is not possible. 
+
+
+
+
+PROBLEM 3. 
+
+
+Part (a) 
+
+$\textbf{FALSE}$
+
+
+Part (b) 
+
+$\frac{6.338464}{13} \times 100$ % = $\mathbf{48.7574}$ % 
+
+Part (c) 
+
+
+$\textbf{TRUE}$ 
+
+
+Part (d) 
+
+
+$\textbf{FALSE}$ 
+
+
+Part (e) 
+
+
+$\textbf{TRUE}$ 
+
+
+Part (f) 
+
+
+$\mathbf{0.6497988315}$ for Initial Factor Analysis 
+
+$\mathbf{0.6498017064}$ for Varimax Rotation 
+
+
+
+Part (g) 
+
+$\textbf{TRUE}$ 
+
+
+Part (h) 
+
+
+$\textbf{L}$ 
+
+
+
+
+PROBLEM 4. 
+
+
+
+```{r}
+# Loading the data 
+data_4 = read.table("C:/Users/Jayaditya Nath/Documents/dataset_factor.csv",sep = ",",header = T) 
+
+```
+
+
+Part (a) 
+
+
+```{r}
+fa_mod_1 = fa(data_4,rotate="none",fm="mle")
+fa_mod_1$PVAL
+
+fa_mod_2 = fa(data_4,nfactors=2,rotate="none",fm="mle")
+fa_mod_2$PVAL
+
+fa_mod_3 = fa(data_4,nfactors=3,rotate="none",fm="mle")
+fa_mod_3$PVAL
+
+```
+
+It is clear from the results that 2 factors should be considered here. 
+
+
+Part (b) 
+
+
+```{r}
+pca_mod = principal(data_4,nfactors = 2,rotate = "none")
+pca_mod$loadings
+
+screeplot(prcomp(data_4,scale=T),type="lines",main = "Scree Plot") 
+
+```
+
+The screeplot shows that most of the variability has been accounted for by the first two factors and thus it agrees with the findings of part (a). 
+Now, it seems that the first component loads strong for all the variables and can be considered as a measure for the overall subject preferences for college students, where as, for the second component, it loads strong for Algebra, Calculus and Statistics, but behaves as a contrast for the other subjects. So, any suitable overall interpretation can not be found for the second component. 
+
+
+Part (c) 
+
+
+```{r}
+pa_mod_norot = fa(data_4,nfactors=2,rotate="none",fm="pa",SMC = T)
+pa_mod_norot$PVAL
+
+pa_mod_promax = fa(data_4,nfactors=2,rotate="promax",fm="pa",SMC = T)
+pa_mod_promax$PVAL
+
+pa_mod_varimax = fa(data_4,nfactors=2,rotate="varimax",fm="pa",SMC = T)
+pa_mod_varimax$PVAL
+
+factors_df = bind_rows(data.frame(y = rownames(pa_mod_norot$loadings),
+                                   unclass(pa_mod_norot$loadings)),
+                        data.frame(y = rownames(pa_mod_promax$loadings),
+                                   unclass(pa_mod_promax$loadings)),
+                        data.frame(y = rownames(pa_mod_varimax$loadings),
+                                   unclass(pa_mod_varimax$loadings)),
+                        .id = "Rotation")
+
+ggplot(factors_df)+
+  geom_vline(aes(xintercept=0))+
+  geom_hline(aes(yintercept=0))+
+  geom_point(aes(x=PA2,y=PA1,col=y,shape=y),size=2)+
+  scale_x_continuous(name="Factor 2",limits = c(-1.1,1.1))+
+  scale_y_continuous(name="Factor1",limits = c(-1.1,1.1))+
+  facet_wrap("Rotation",
+             labeller=labeller(Rotation = c("1"="Original","2"="Promax","3"="Varimax")))+
+  coord_fixed(ratio=1) 
+
+```
+
+
+From the plots, it is evident that the promax rotation did the best job to make the variables rely on one single component compared to the varimax rotation and no rotation. Between these two, the varimax is considerably better than the one with no rotation. 
+
+
+Part (d) 
+
+The analysis indicates that a single factor isn't enough to explain the variability in subject preference. However, with two factors, prove sufficient for the analysis. Attempting to include a third factor isn't feasible due to insufficient data leading to a p-value of NA. 
+
+
+
+
+PROBLEM 5. 
+
+
+```{r}
+# Loading the train and test data 
+data_5_train = read.table("C:/Users/Jayaditya Nath/Documents/spamdetect_train.dat",sep = ",")
+data_5_train = data_5_train[, -41]
+
+data_5_test = read.table("C:/Users/Jayaditya Nath/Documents/spamdetect_test.dat",sep = ",")
+data_5_test = data_5_test[, -41] 
+
+```
+
+
+Part (a) 
+
+
+```{r}
+# Extract spam and non-spam groups
+spam_group_train = data_5_train[data_5_train[, 57] == 1, -57]
+non_spam_group_train = data_5_train[data_5_train[, 57] == 0, -57]
+
+#Testing for equal variance-covariance matrix
+CovTest2.2013Cai(as.matrix(spam_group_train),as.matrix(non_spam_group_train),alpha = 0.05)$reject
+
+
+# Test for multivariate normality
+mvn(spam_group_train, mvnTest = "hz")$multivariateNormality
+mvn(non_spam_group_train, mvnTest = "hz")$multivariateNormality 
+
+```
+
+
+From the results, it is clear that the covariance matrices for the spam and not spam groups are different and thus, a quadratic discriminant analysis is suggested. Also, the two sets of variables can not be assumed to come from a multivariate normal distribution using the Henze-Zirkler test of multivariate normality. 
+
+
+Part (b) 
+
+
+```{r} 
+# Fit linear discriminant analysis
+lda_mod_5 = lda(as.factor(V58) ~ ., data = data_5_train,prior=c(0.5,0.5))
+
+# Cross-validation
+cv_lda = lda(as.factor(V58) ~ ., data = data_5_train, CV = TRUE,prior=c(0.5,0.5))
+conf_matrix_cv_lda = table(data_5_train$V58, cv_lda$class)
+error_rate_cv_lda = 1 - sum(diag(conf_matrix_cv_lda)) / sum(conf_matrix_cv_lda)
+
+print("The cross-validation confusion matrix is : ")
+conf_matrix_cv_lda
+print(paste0("The error rate with the train data is : ",error_rate_cv_lda))
+
+# Predict on test data
+pred_lda = predict(lda_mod_5, newdata = data_5_test)
+
+# Confusion matrix and error rate
+conf_matrix_lda = table(pred_lda$class, data_5_test$V58)
+error_rate_lda = 1 - sum(diag(conf_matrix_lda)) / sum(conf_matrix_lda)
+
+print("The classification confusion matrix is : ")
+conf_matrix_lda
+print(paste0("The error rate with the test data is : ",error_rate_lda)) 
+
+```
+
+
+```{r}
+# Fit linear discriminant analysis
+lda_mod_5 = lda(as.factor(V58) ~ ., data = data_5_train,prior=c(0.5,0.5))
+
+# Cross-validation
+cv_lda = lda(as.factor(V58) ~ ., data = data_5_train, CV = TRUE,prior=c(0.5,0.5))
+conf_matrix_cv_lda = table(data_5_train$V58, cv_lda$class)
+error_rate_cv_lda = 1 - sum(diag(conf_matrix_cv_lda)) / sum(conf_matrix_cv_lda)
+
+print("The cross-validation confusion matrix is : ")
+conf_matrix_cv_lda
+print(paste0("The error rate with the train data is : ",error_rate_cv_lda))
+
+# Predict on test data
+pred_lda = predict(lda_mod_5, newdata = data_5_test)
+
+# Confusion matrix and error rate
+conf_matrix_lda = table(pred_lda$class, data_5_test$V58)
+error_rate_lda = 1 - sum(diag(conf_matrix_lda)) / sum(conf_matrix_lda)
+
+print("The classification confusion matrix is : ")
+conf_matrix_lda
+print(paste0("The error rate with the test data is : ",error_rate_lda)) 
+
+```
+
+The results from using equal prior probabilities(error rate of 12%) are analogous to the results from the discriminant analysis using prior probabilities proportional to sample sizes(error rate of 14%). 
+
+
+
+Part (c) 
+
+
+```{r}
+# Fit quadratic discriminant analysis
+qda_mod_5 = qda(as.factor(V58) ~ ., data = data_5_train,prior=c(0.5,0.5))
+
+# Cross-validation
+cv_qda = lda(as.factor(V58) ~ ., data = data_5_train, CV = TRUE,prior=c(0.5,0.5))
+conf_matrix_cv_qda = table(data_5_train$V58, cv_qda$class)
+error_rate_cv_qda = 1 - sum(diag(conf_matrix_cv_qda)) / sum(conf_matrix_cv_qda)
+
+print("The cross-validation confusion matrix is : ")
+conf_matrix_cv_qda
+print(paste0("The error rate with the train data is : ",error_rate_cv_qda))
+
+
+# Predict on test data
+pred_qda = predict(qda_mod_5, newdata = data_5_test)
+
+# Confusion matrix and error rate
+conf_matrix_qda = table(pred_qda$class, data_5_test$V58)
+error_rate_qda = 1 - sum(diag(conf_matrix_qda)) / sum(conf_matrix_qda)
+
+
+print("The classification confusion matrix is : ")
+conf_matrix_qda
+print(paste0("The error rate with the test data is : ",error_rate_qda)) 
+
+```
+
+
+Since the two groups have different covariance matrices, a quadratic discriminant analysis should have performed better, but, here, we can see that the QDA performs worse compared to LDA with an error rate of roughly 22%. This is probably because the multivariate normality assumption is not valid for this data. 
+
+
+Part (d) 
+
+
+```{r}
+# Stepwise classification
+step_mod_5 = stepclass(V58 ~ ., data = data_5_train, method = "qda", improvement = 0.05)
+
+
+# Fit logistic regression model using the selected predictors
+logistic_model = glm(step_mod_5$formula, data = data_5_train, family = binomial)
+
+# Make predictions on test data
+pred_logistic = predict(logistic_model, newdata = data_5_test, type = "response")
+
+# Confusion matrix and error rate
+conf_matrix_qda_step = table(round(pred_logistic), data_5_test$V58)
+error_rate_qda_step = 1 - sum(diag(conf_matrix_qda_step)) / sum(conf_matrix_qda_step)
+
+print("The classification confusion matrix is : ")
+conf_matrix_qda_step
+print(paste0("The error rate with the test data is : ",error_rate_qda_step)) 
+
+```
+
+
+Only the 53rd variable got selected in the step-wise discriminant analysis and I have chosen an improvement of 5% on the model accuracy since the last model which I fit had an accuracy of roughly 79% and I would not be worried with a change of 5% in the model accuracy.
+
+Till now, the LDA model with equal prior probabilities exhibit the lowest error rate among the QDA and step-wise discriminant analysis models. 
+
+
+Part (e) 
+
+
+```{r} 
+# KNN 
+knn_mod_5 = knn(data_5_train[,-57],data_5_train[,-57],data_5_train[,57],k=3)
+
+knn_mod_5_test = knn(data_5_train[,-57],data_5_test[,-57],data_5_train[,57],k=3)
+conf_matrix_knn = table(data_5_test[,57],predict=knn_mod_5_test)
+
+
+print("The classification confusion matrix is : ")
+conf_matrix_knn
+print(paste0("The accuracy of the KNN model with the test data is : ",sum(diag(conf_matrix_knn)) / sum(conf_matrix_knn))) 
+
+```
+
+
+Performing discriminant analysis with the k-nearest neighbours algorithm, I get an error rate of roughly 8%. This model is the best in terms of classification compared to all the models which i have fit.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
